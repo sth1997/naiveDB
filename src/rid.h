@@ -10,13 +10,15 @@ public:
     RID() : pageNum(-1), slotNum(-1);
     RID(PageNum p, SlotNum s) : pageNum(p), slotNum(s);
     ~RID();
-    RC GetPageNum (PageNum &pageNum) const
+    RC GetPageNum (PageNum &p) const
     {
-        return pageNum;
+        p = this->pageNum;
+        return 0;
     }
-    RC GetSlotNum (SlotNum &slotNum) const
+    RC GetSlotNum (SlotNum &s) const
     {
-        return slotNum;
+        s = this->slotNum;
+        return 0;
     }
 private:
     PageNum pageNum;
