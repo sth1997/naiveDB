@@ -24,11 +24,11 @@ struct RM_PageHeader
 class RM_BitMap
 {
 public:
-    RM_BitMap(int numBytes);
+    RM_BitMap(int numBytes, bool free);
     ~RM_BitMap();
-    void set(int bitPos, bool free);
-    void setAll(bool free);
-    int getFirstFree() const;
+    RC set(int bitPos, bool free);
+    RC setAll(bool free);
+    RC getFirstFree(int& pos) const;// bit position, not byte
 private:
     char* buffer;
     int size; // bytes, not bits
@@ -46,6 +46,9 @@ private:
     RID rid;
 };
 
-#define RM_NORECORD           (START_RM_ERR - 0)  // no record in RM_Record
+#define RM_NOFREEBITMAP             (START_RM_WARN + 0) // no free slot in bitmap
+
+#define RM_NORECORD                 (START_RM_ERR - 0)  // no record in RM_Record
+#define RM_BITMAPPOSOUTOFSIZE       (START_RM_ERR - 1)  // bitmap's set position out of size
 
 #endif

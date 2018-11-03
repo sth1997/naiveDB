@@ -14,8 +14,7 @@ RC RM_Record::GetData(char *&pData) const
 {
     if (recordSize == -1)
         return RM_NORECORD;
-    pData = new char[recordSize];
-    memcpy(pData, data, recordSize);
+    pData = this->data;
     return OK_RC;
 }
 
