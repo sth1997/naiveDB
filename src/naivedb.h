@@ -101,4 +101,4 @@ typedef char Boolean;
 #define NULL 0
 #endif
 
-#endif
+#endif //NAIVEDB_H
