@@ -30,3 +30,13 @@
 *.exe
 *.out
 *.app
+
+# Ctags
+tags
+
+# Misc
+file*
+pf_test*
+node_modules/
+package.json
+package-lock.json
