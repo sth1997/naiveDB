@@ -2,18 +2,14 @@
 #include <cstring>
 
 
-RM_BitMap::RM_BitMap(int numBytes, bool free)
+RM_BitMap::RM_BitMap(int numBytes, char* c)
 {
     this->size = numBytes;
-    this->buffer = new char[numBytes];
-    memset(this->buffer, free, numBytes);
+    this->buffer = c;
 }
 
 RM_BitMap::~RM_BitMap()
-{
-    if (buffer)
-        delete []buffer;
-}
+{}
 
 RC RM_BitMap::set(int bitPos, bool free)
 {
@@ -51,4 +47,14 @@ RC RM_BitMap::getFirstFree(int& pos) const
             return OK_RC;
         }
     return RM_NOFREEBITMAP;
+}
+
+RC RM_BitMap::isFree(int bitPos, bool& isfree)
+{
+    if ((bitPos / 8) >= size)
+        return RM_BITMAPPOSOUTOFSIZE;
+    char& tmp = buffer[bitPos / 8];
+    int posInByte = bitPos & 7; // = bitPos % 8
+    isfree = (tmp & (1 << posInByte));
+    return OK_RC;
 }

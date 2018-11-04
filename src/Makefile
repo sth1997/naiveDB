@@ -34,7 +34,7 @@ STATS_OPTION   = -DPF_STATS
 PF_SOURCES     = pf_buffermgr.cc pf_error.cc pf_filehandle.cc \
                  pf_pagehandle.cc pf_hashtable.cc pf_manager.cc \
                  pf_statistics.cc statistics.cc
-RM_SOURCES     = #rm_record.cc
+RM_SOURCES     = rm_record.cc rm_bitmap.cc rm_filehandle.cc
 IX_SOURCES     =
 SM_SOURCES     = #sm_stub.cc printer.cc
 QL_SOURCES     = #ql_manager_stub.cc
@@ -60,7 +60,7 @@ LIBRARY_IX     = $(LIB_DIR)libix.a
 LIBRARY_SM     = $(LIB_DIR)libsm.a
 LIBRARY_QL     = $(LIB_DIR)libql.a
 LIBRARY_PARSER = $(LIB_DIR)libparser.a
-LIBRARIES      = $(LIBRARY_PF) # $(LIBRARY_RM) $(LIBRARY_IX) \
+LIBRARIES      = $(LIBRARY_PF) $(LIBRARY_RM) #$(LIBRARY_IX) \
                  $(LIBRARY_SM) $(LIBRARY_QL) $(LIBRARY_PARSER)
 
 UTILS          = $(UTILS_SOURCES:.cc=)
