@@ -5,6 +5,7 @@
 #include "rid.h"
 #include "pf.h"
 #include <cstring>
+#include <string>
 
 struct RM_FileHeader
 {
@@ -13,6 +14,7 @@ struct RM_FileHeader
     int totalPageNum;
     int firstFree;
 };
+#define RM_PAGE_LIST_END  -1       // end of list of free pages
 
 struct RM_PageHeader
 {
@@ -67,12 +69,13 @@ public:
     RC Init  (RM_FileHeader header, PF_FileHandle* pffh);
     bool FileHeaderChanged() const { return fileHeaderChanged;}
     PF_FileHandle* GetPFFileHandle() const {return filehandle;}
+    RM_FileHeader GetRMFileHeader() const {return fileheader;}
+    RC GetPageHeader(const PF_PageHandle &handle, RM_PageHeader &pageHeader) const;
+    RC GetSlotPointer(const PF_PageHandle &handle, SlotNum slotNum, char*& data) const;
     RC WriteFileHeaderBack();
     RC DeleteFileHandle();
 private:
     bool ValidRID(const RID &rid) const;
-    RC GetPageHeader(const PF_PageHandle &handle, RM_PageHeader &pageHeader) const;
-    RC GetSlotPointer(const PF_PageHandle &handle, SlotNum slotNum, char*& data) const;
     RC GetFirstFreePage(PageNum &pageNum);
     RC GetFirstFreeSlot(PageNum pageNum, SlotNum &slotNum);
     RC CreateNewPage(PageNum &pageNum);
@@ -81,9 +84,71 @@ private:
     bool fileHeaderChanged;
 };
 
-#define RM_NOFREEBITMAP             (START_RM_WARN + 0) // no free slot in bitmap
+class RM_Manager {
+    public:
+        RM_Manager  (PF_Manager &pfm) : pf_mgr(pfm) {};            // Constructor
+        ~RM_Manager () {};                           // Destructor
+        RC CreateFile  (const char *fileName, int recordSize);  
+        // Create a new file
+        RC DestroyFile (const char *fileName);       // Destroy a file
+        RC OpenFile    (const char *fileName, RM_FileHandle &fileHandle);
+        // Open a file
+        RC CloseFile   (RM_FileHandle &fileHandle);  // Close a file
+    private:
+        PF_Manager &pf_mgr;
+};
 
-#define RM_NORECORD                 (START_RM_ERR - 0)  // no record in RM_Record
+class RM_FileScan {
+    public:
+        RM_FileScan  ();                                // Constructor
+        ~RM_FileScan ();                                // Destructor
+        RC OpenScan     (const RM_FileHandle &fileHandle,  // Initialize file scan
+                AttrType      attrType,
+                int           attrLength,
+                int           attrOffset,
+                CompOp        compOp,
+                void          *value,
+                ClientHint    pinHint = NO_HINT);
+        RC GetNextRec   (RM_Record &rec);                  // Get next matching record
+        RC CloseScan    ();                                // Terminate file scan
+    private:
+        PageNum pageNum;                                 // Current page number
+        SlotNum slotNum;                                 // Current slot number
+
+        RM_FileHandle rm_fhdl;                           // File handle for the file
+        AttrType attrType;                                  // Attribute type
+        int attrLength;                                     // Attribute length
+        int attrOffset;                                     // Attribute offset
+        CompOp compOp;                                      // Comparison operator
+        void* value;                                        // Value to be compared
+        ClientHint pinHint;                                 // Pinning hint
+        int scanOpen;                                       // Flag to track is scan is open
+
+        int getIntegerValue(char* recordData);              // Get integer attribute value
+        float getFloatValue(char* recordData);              // Get float attribute value
+        std::string getStringValue(char* recordData);       // Get string attribute value
+        template<typename T>
+            bool matchRecord(T recordValue, T givenValue);      // Match the record value with
+                                                        // the given value
+};
+
+//
+// Print-error function and RM return code defines
+//
+void RM_PrintError(RC rc);
+
+#define RM_NOFREEBITMAP         (START_RM_WARN + 0) // no free slot in bitmap
+#define RM_BADFILENAME          (START_RM_WARN + 1) // file name is null
+#define RM_BADRECORDSIZE        (START_RM_WARN + 2) // record size is invalid
+#define RM_INVALID_ATTRIBUTE    (START_RM_WARN + 3) // scan attribute is invalid
+#define RM_INVALID_OPERATOR     (START_RM_WARN + 4) // scan operator is invalid
+#define RM_ATTRIBUTE_NOT_CONSISTENT     (START_RM_WARN + 5) // attribute & attrLength not consistent
+#define RM_SCAN_CLOSED          (START_RM_WARN + 6) // scan closed when get next
+#define RM_EOF                  (START_RM_WARN + 7) // scan end of file
+#define RM_LASTWARN             RM_EOF
+
+#define RM_NORECORD             (START_RM_ERR - 0)  // no record in RM_Record
+
 #define RM_BITMAPPOSOUTOFSIZE       (START_RM_ERR - 1)  // bitmap's set position out of size
 #define RM_HANDLENOTINIT            (START_RM_ERR - 2)  // RM_FileHandle have not been initialized
 #define RM_HANDLEINITTWICE          (START_RM_ERR - 3)  // RM_FileHandle have been initialized twice
@@ -94,5 +159,7 @@ private:
 #define RM_INSERTNULLDATA           (START_RM_ERR - 8)  // insert null data
 #define RM_SHOULDNOTCREATEPAGE      (START_RM_ERR - 9)  // should not create new page, because fileheader.firstFree != -1
 #define RM_WRONGINLIST              (START_RM_ERR - 10) // there is something wrong with the free page list
+#define RM_PFERROR              (START_RM_ERR - 11)  // error occur in pf
+#define RM_LASTERROR            RM_PFERROR
 
 #endif

@@ -16,7 +16,7 @@ RC RM_BitMap::set(int bitPos, bool free)
     if ((bitPos / 8) >= size)
         return RM_BITMAPPOSOUTOFSIZE;
     char& tmp = buffer[bitPos / 8];
-    char allFree = (1 << 8) - 1;
+    char allFree = (char) (1 << 8) - 1;
     int posInByte = bitPos & 7; // = bitPos % 8
     if (free)
         tmp |= (1 << posInByte);
