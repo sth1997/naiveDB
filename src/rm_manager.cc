@@ -71,7 +71,6 @@ RC RM_Manager::OpenFile(const char* fileName, RM_FileHandle& rm_fhdl) {
     // open file
     // pf_mgr -> pf_fhdl -> pf_phdl -> pData -> rm_fhdr
     CHECK_NOZERO(pf_mgr.OpenFile(fileName, pf_fhdl));
-    CHECK_NOZERO(pf_mgr.OpenFile(fileName, pf_fhdl));
     CHECK_NOZERO(pf_fhdl.GetFirstPage(pf_phdl));
     CHECK_NOZERO(pf_phdl.GetData(pData));
     struct RM_FileHeader *rm_fhdr = (struct RM_FileHeader*) pData;
