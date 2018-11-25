@@ -21,7 +21,7 @@ LEX            = flex
 # -O1 - Basic optimization
 # -Wall - All warnings
 # -DDEBUG_PF - This turns on the LOG file for lots of BufferMgr info
-CFLAGS         = -g -O1 -Wall -Wextra -Werror $(STATS_OPTION) $(INC_DIRS)
+CFLAGS         = -g -O1 -Wall -Wextra $(STATS_OPTION) $(INC_DIRS) #-Werror
 
 # The STATS_OPTION can be set to -DPF_STATS or to nothing to turn on and
 # off buffer manager statistics.  The student should not modify this
@@ -35,12 +35,12 @@ PF_SOURCES     = pf_buffermgr.cc pf_error.cc pf_filehandle.cc \
                  pf_pagehandle.cc pf_hashtable.cc pf_manager.cc \
                  pf_statistics.cc statistics.cc
 RM_SOURCES     = rm_record.cc rm_bitmap.cc rm_error.cc rm_manager.cc rm_filehandle.cc rm_filescan.cc
-IX_SOURCES     =
+IX_SOURCES     = ix_manager.cc ix_indexscan.cc ix_error.cc
 SM_SOURCES     = #sm_stub.cc printer.cc
 QL_SOURCES     = #ql_manager_stub.cc
 UTILS_SOURCES  = #naivedb.cc dbcreate.cc dbdestroy.cc
 PARSER_SOURCES = #scan.c parse.c nodes.c interp.c
-TESTER_SOURCES = pf_test1.cc pf_test2.cc pf_test3.cc rm_test.cc #ix_test.cc parser_test.cc
+TESTER_SOURCES = pf_test1.cc pf_test2.cc pf_test3.cc rm_test.cc ix_test.cc #parser_test.cc
 
 PF_OBJECTS     = $(addprefix $(BUILD_DIR), $(PF_SOURCES:.cc=.o))
 RM_OBJECTS     = $(addprefix $(BUILD_DIR), $(RM_SOURCES:.cc=.o))
@@ -60,14 +60,14 @@ LIBRARY_IX     = $(LIB_DIR)libix.a
 LIBRARY_SM     = $(LIB_DIR)libsm.a
 LIBRARY_QL     = $(LIB_DIR)libql.a
 LIBRARY_PARSER = $(LIB_DIR)libparser.a
-LIBRARIES      = $(LIBRARY_PF) $(LIBRARY_RM) #$(LIBRARY_IX) \
-                 $(LIBRARY_SM) $(LIBRARY_QL) $(LIBRARY_PARSER)
+LIBRARIES      = $(LIBRARY_PF) $(LIBRARY_RM) $(LIBRARY_IX) \
+                 #$(LIBRARY_SM) $(LIBRARY_QL) $(LIBRARY_PARSER)
 
 UTILS          = $(UTILS_SOURCES:.cc=)
 TESTS          = $(TESTER_SOURCES:.cc=)
 EXECUTABLES    = $(UTILS) $(TESTS)
 
-LIBS           = -lpf -lrm # -lparser -lql -lsm -lix
+LIBS           = -lix -lrm -lpf # -lparser -lql -lsm
 
 #
 # Build targets
