@@ -156,6 +156,8 @@ RC RM_FileHandle::InsertRec(const char *pData, RID &rid)
     CHECK_NONZERO(GetFirstFreePage(pageNum));
     CHECK_NONZERO(GetFirstFreeSlot(pageNum, slotNum));
     CHECK_NONZERO(filehandle->GetThisPage(pageNum, pageHandle));
+    rid.SetPageNum(pageNum);
+    rid.SetSlotNum(slotNum);
     char* pageData;
     CHECK_NONZERO(pageHandle.GetData(pageData));
     RM_BitMap bitmap(fileheader.recordNumPerPage >> 3, pageData + sizeof(int) * 4);

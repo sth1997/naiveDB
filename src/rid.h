@@ -11,7 +11,7 @@ class RID
 public:
     RID() : pageNum(-1), slotNum(-1){};
     RID(PageNum p, SlotNum s) : pageNum(p), slotNum(s){};
-    ~RID();
+    ~RID() {};
     RC GetPageNum (PageNum &p) const
     {
         p = this->pageNum;
@@ -20,6 +20,14 @@ public:
     RC GetSlotNum (SlotNum &s) const
     {
         s = this->slotNum;
+        return OK_RC;
+    }
+    RC SetPageNum (PageNum p) {
+        pageNum = p;
+        return OK_RC;
+    }
+    RC SetSlotNum (SlotNum s) {
+        slotNum = s;
         return OK_RC;
     }
 private:

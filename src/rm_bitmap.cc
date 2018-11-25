@@ -16,7 +16,7 @@ RC RM_BitMap::set(int bitPos, bool free)
     if ((bitPos / 8) >= size)
         return RM_BITMAPPOSOUTOFSIZE;
     char& tmp = buffer[bitPos / 8];
-    char allFree = (1 << 8) - 1;
+    char allFree = (char) (1 << 8) - 1;
     int posInByte = bitPos & 7; // = bitPos % 8
     if (free)
         tmp |= (1 << posInByte);
@@ -27,7 +27,11 @@ RC RM_BitMap::set(int bitPos, bool free)
 
 RC RM_BitMap::setAll(bool free)
 {
-    memset(buffer, free, size);
+    if (free) {
+        memset(buffer, -1, size);
+    } else {
+        memset(buffer, 0, size);
+    }
     return OK_RC;
 }
 
@@ -36,7 +40,7 @@ RC RM_BitMap::getFirstFree(int& pos) const
     for (int i = 0; i < size; ++i)
         if (buffer[i])
         {
-            char tmp = buffer[i] & (-buffer[i]);
+            unsigned char tmp = (unsigned char) (buffer[i] & (-buffer[i]));
             int res = 0;
             while (tmp)
             {

@@ -37,6 +37,9 @@ tags
 # Misc
 file*
 pf_test*
+rm_test*
 node_modules/
 package.json
 package-lock.json
+build/
+lib/
