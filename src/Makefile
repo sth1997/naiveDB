@@ -38,7 +38,8 @@ PF_SOURCES     = pf_buffermgr.cc pf_error.cc pf_filehandle.cc \
 RM_SOURCES     = rm_record.cc rm_bitmap.cc rm_error.cc \
 				 rm_manager.cc rm_filehandle.cc rm_filescan.cc \
 				 rm_manager_gtest.cc rm_filehandle_gtest.cc # rm_filehandle_gtest.cc
-IX_SOURCES     = ix_manager.cc ix_indexscan.cc ix_error.cc
+IX_SOURCES     = ix_manager.cc ix_indexscan.cc ix_error.cc ix_indexhandle.cc btreenode.cc
+
 SM_SOURCES     = #sm_stub.cc printer.cc
 QL_SOURCES     = #ql_manager_stub.cc
 UTILS_SOURCES  = #naivedb.cc dbcreate.cc dbdestroy.cc
