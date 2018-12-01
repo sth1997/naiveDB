@@ -27,7 +27,8 @@ public:
     {
         return maxKeyNum;
     }
-    int findLEPos(const char* key, const RID& rid) const;
+    int findKeyGE(const char* key, const RID& rid) const;
+    int findKey(const char* key, const RID& rid) const;
     RC split(BTreeNode& otherNode);
     void setChanged()
     {
@@ -59,11 +60,7 @@ public:
     {
         return thisPageNum;
     }
-private:
-    int CMP(const char* key1, const char* key2, const RID& rid1, const RID& rid2) const;
-    int CMP(const char* key1, const char* key2) const;
-    int CMP(const RID& rid1, const RID& rid2) const;
-    bool isInOrder(int pos = -1) const;
+    void copyKey(int pos, void* buf) const;
     RID getRID(int pos) const
     {
         assert(pos < *keyNum && pos >= 0);
@@ -97,6 +94,22 @@ private:
         memcpy(keys + attrLength * pos, key, attrLength);
         changed = true;
     }
+    int CMP(const char* key1, const char* key2, const RID& rid1, const RID& rid2) const;
+    int CMP(const char* key1, const char* key2) const;
+    int CMP(const RID& rid1, const RID& rid2) const;
+    char* getLargestKey() const
+    {
+        assert(getNum() > 0);
+        return getKey(getNum() - 1);
+    }
+    RID getLargestRID() const
+    {
+        assert(getNum() > 0);
+        return getRID(getNum() - 1);
+    }
+
+private:
+    bool isInOrder(int pos = -1) const;
     void setNum(int num)
     {
         assert(num <= maxKeyNum && num >= 0);

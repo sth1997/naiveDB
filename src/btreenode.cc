@@ -48,6 +48,7 @@ BTreeNode::BTreeNode(AttrType type, int len, PF_PageHandle& handle, bool needIni
         setNum(0);
         setPre(-1);
         setNext(-1);
+        changed = true;
     }
 }
 
@@ -124,17 +125,30 @@ int BTreeNode::CMP(const char* key1, const char* key2, const RID& rid1, const RI
         return CMP(rid1, rid2);
 }
 
-//find the first position with less equal key
-//return -1 means the input key is less than any key in this node
-int BTreeNode::findLEPos(const char* key, const RID& rid) const
+//return pos, key[pos-1] < key <= key[pos]
+//return getNum(), if key is larger than any other key
+int BTreeNode::findKeyGE(const char* key, const RID& rid) const
 {
     assert(getNum() > 0);
-    for (int i = 0; i < getNum(); ++i)
+    for (int i = getNum() - 1; i >= 0; --i)
     {
-        if (CMP(key, getKey(i), rid, getRID(i)) < 0)
-            return i - 1;
+        if (CMP(key, getKey(i), rid, getRID(i)) > 0)
+            return i + 1;
     }
-    return getNum() - 1;
+    return 0;
+}
+
+//return pos, key == key[pos]
+//return -1 means not found
+int BTreeNode::findKey(const char* key, const RID& rid) const
+{
+    assert(getNum() > 0);
+    for (int i = getNum() - 1; i >= 0; --i)
+    {
+        if (CMP(key, getKey(i), rid, getRID(i)) == 0)
+            return i;
+    }
+    return -1;
 }
 
 // if pos == -1, compare all the keys
@@ -154,6 +168,12 @@ bool BTreeNode::isInOrder(int pos) const
                 return false;
         return true;
     }
+}
+
+void BTreeNode::copyKey(int pos, void* buf) const
+{
+    assert(pos < *keyNum && pos >= 0);
+    memcpy(buf, keys + attrLength * pos, attrLength);
 }
 
 // if this node is full, return an WARNING
@@ -204,7 +224,7 @@ RC BTreeNode::remove(const char* key, const RID& rid, int pos)
     }
     else
     {
-        pos = findLEPos(key, rid);
+        pos = findKey(key, rid);
         if (pos == -1)
             return IX_NOTINNODE;
         int cmp = CMP(key, getKey(pos), rid, getRID(pos));
