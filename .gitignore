@@ -43,3 +43,4 @@ package.json
 package-lock.json
 build/
 lib/
+src/gtest
