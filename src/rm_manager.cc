@@ -85,6 +85,9 @@ RC RM_Manager::OpenFile(const char* fileName, RM_FileHandle& rm_fhdl) {
 }
 
 RC RM_Manager::CloseFile(RM_FileHandle& rm_fhdl) {
+    if(!rm_fhdl.FileOpen()) {
+      return RM_FILE_NOT_OPEN;
+    }
     RC rc;
     // rm_fhdl -> pf_fhdl
     if (rm_fhdl.FileHeaderChanged()) {

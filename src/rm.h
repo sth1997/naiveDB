@@ -67,6 +67,7 @@ public:
     RC UpdateRec      (const RM_Record &rec);
     RC ForcePages     (PageNum pageNum = ALL_PAGES) const;
     RC Init  (RM_FileHeader header, PF_FileHandle* pffh);
+    bool FileOpen() const { return bFileOpen;}
     bool FileHeaderChanged() const { return fileHeaderChanged;}
     PF_FileHandle* GetPFFileHandle() const {return filehandle;}
     RM_FileHeader GetRMFileHeader() const {return fileheader;}
@@ -81,6 +82,7 @@ private:
     RC CreateNewPage(PageNum &pageNum);
     PF_FileHandle* filehandle;
     RM_FileHeader fileheader;
+    bool bFileOpen;
     bool fileHeaderChanged;
 };
 
@@ -144,7 +146,8 @@ void RM_PrintError(RC rc);
 #define RM_INVALID_OPERATOR     (START_RM_WARN + 4) // scan operator is invalid
 #define RM_ATTRIBUTE_NOT_CONSISTENT     (START_RM_WARN + 5) // attribute & attrLength not consistent
 #define RM_SCAN_CLOSED          (START_RM_WARN + 6) // scan closed when get next
-#define RM_EOF                  (START_RM_WARN + 7) // scan end of file
+#define RM_FILE_NOT_OPEN          (START_RM_WARN + 7) // scan closed when get next
+#define RM_EOF                  (START_RM_WARN + 8) // scan end of file
 #define RM_LASTWARN             RM_EOF
 
 #define RM_NORECORD             (START_RM_ERR - 0)  // no record in RM_Record

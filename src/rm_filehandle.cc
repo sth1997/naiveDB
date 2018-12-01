@@ -21,6 +21,7 @@ RC RM_FileHandle::Init(RM_FileHeader header, PF_FileHandle* pffh)
     fileheader = header;
     filehandle = new PF_FileHandle;
     *filehandle = *pffh;
+    bFileOpen = true;
     return OK_RC;
 }
 
@@ -230,6 +231,7 @@ RC RM_FileHandle::DeleteFileHandle()
         return RM_HANDLENOTINIT;
     delete filehandle;
     filehandle = NULL;
+    bFileOpen = false;
     return OK_RC;
 }
 
