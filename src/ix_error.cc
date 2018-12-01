@@ -1,6 +1,7 @@
 #include <cerrno>
 #include <cstdio>
 #include <iostream>
+#include <cstring>
 #include "ix_internal.h"
 
 using namespace std;

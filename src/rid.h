@@ -30,7 +30,6 @@ public:
         slotNum = s;
         return OK_RC;
     }
-private:
     PageNum pageNum;
     SlotNum slotNum;
 };
