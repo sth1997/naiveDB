@@ -89,7 +89,7 @@ public:
     RC CloseIndex(IX_IndexHandle &indexHandle);
 
 private:
-    PF_Manager &pfm;
+    PF_Manager &pf_mgr;
 };
 
 class IX_IndexScan {
@@ -133,4 +133,6 @@ private:
 #define IX_INVALIDFILEHANDLE    (START_IX_ERR - 8) // the input PF_FileHandle is invalid
 #define IX_INVALID              (START_IX_ERR - 9) // invalid
 #define IX_NULLKEYDATA          (START_IX_ERR - 10)// the key data pointer = NULL
+#define IX_PFERROR              (START_IX_ERR - 11)      // error in pf
+#define IX_LASTERROR            IX_PFERROR
 #endif
