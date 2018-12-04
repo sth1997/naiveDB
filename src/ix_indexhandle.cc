@@ -198,17 +198,40 @@ RC IX_IndexHandle::FindLargestLeaf(BTreeNode* &node)
     assert(rootNode != NULL);
     RC rc;
     CHECK_NONZERO(IsValid());
+    path[0] = rootNode;
     if (fileHeader.height == 1)
     {
-        path[0] = rootNode;
         node = rootNode;
         return OK_RC;
     }
 
     for (int i = 1; i < fileHeader.height; ++i)
     {
-        PageNum page = path[i-1]->getPage(path[i-1]->getNum() - 1);
-        DeleteNode(path[i]);
+        PageNum page = path[i-1]->getPage(path[i - 1]->getNum() - 1);
+        CHECK_NONZERO(DeleteNode(path[i]));
+        CHECK_NONZERO(FetchNode(page, path[i]));
+        childPos[i - 1] = path[i - 1]->getNum() - 1;
+    }
+    node = path[fileHeader.height - 1];
+    return OK_RC;
+}
+
+RC IX_IndexHandle::FindSmallestLeaf(BTreeNode* &node)
+{
+    assert(rootNode != NULL);
+    RC rc;
+    CHECK_NONZERO(IsValid());
+    path[0] = rootNode;
+    if (fileHeader.height == 1)
+    {
+        node = rootNode;
+        return OK_RC;
+    }
+
+    for (int i = 1; i < fileHeader.height; ++i)
+    {
+        PageNum page = path[i-1]->getPage(0);
+        CHECK_NONZERO(DeleteNode(path[i]));
         CHECK_NONZERO(FetchNode(page, path[i]));
         childPos[i - 1] = 0;
     }
@@ -329,7 +352,7 @@ RC IX_IndexHandle::InsertEntry(void *pData, const RID& rid)
             BTreeNode* nextNode;
             CHECK_NONZERO(FetchNode(nextPage, nextNode));
             nextNode->setPre(newNode->getPageNum());
-            DeleteNode(nextNode);
+            CHECK_NONZERO(DeleteNode(nextNode));
         }
 
         //select one node to insert
@@ -383,5 +406,116 @@ RC IX_IndexHandle::InsertEntry(void *pData, const RID& rid)
     CHECK_NONZERO(DeleteNode(newNode));
     CHECK_NONZERO(DeleteNode(node)); // delete the old root
     SetHeight(fileHeader.height + 1);
+    return OK_RC;
+}
+
+RC IX_IndexHandle::DisposePage(PageNum pageNum)
+{
+    RC rc;
+    CHECK_NONZERO(IsValid());
+    CHECK_NONZERO(fileHandle->DisposePage(pageNum));
+    return OK_RC;
+}
+
+RC IX_IndexHandle::DeleteEntry(void* pData, const RID& rid)
+{
+    if (pData == NULL)
+        return IX_NULLKEYDATA;
+    RC rc;
+    CHECK_NONZERO(IsValid());
+
+    BTreeNode* node;
+    CHECK_NONZERO(FindLeaf(pData, rid, node));
+    int pos = node->findKey((char*)pData, rid);
+    if (pos == -1)
+        return IX_ENTRYNOTEXIST;
+    
+    //update the largest key in path
+    if(pos == node->getNum() - 1) // key is the largest key in this node, it also appears in its father node and even ancestor nodes
+    {
+        for (int i = fileHeader.height - 2; i >= 0; --i)
+        {
+            int pos = path[i]->findKey((char*) pData, rid);
+            if (pos != -1)
+            {
+                char* lastKey;
+                RID lastRID;
+                lastKey = path[i + 1]->getLargestKey();
+                lastRID = path[i + 1]->getLargestRID();
+                if (node->CMP((char*)pData, lastKey, rid, lastRID) == 0)
+                {
+                    int pos = path[i + 1]->getNum() - 2;
+                    if (pos < 0) //underflow
+                        continue;
+                    lastKey = path[i + 1]->getKey(pos);
+                    lastRID = path[i + 1]->getRID(pos);
+                }
+                path[i]->setKey(pos, lastKey);
+                path[i]->setRID(pos, lastRID);
+                if (pos != path[i]->getNum() - 1)
+                    break;
+            }
+            else
+                assert(0);
+        }
+    }
+    
+    CHECK_NONZERO(node->remove((char*)pData, rid));
+    int height = fileHeader.height - 1;
+    while (node->getNum() == 0)
+    {
+        --height;
+        if (height < 0) break;
+        BTreeNode* father = path[height];
+        CHECK_NONZERO(father->remove(NULL, RID(-1, -1), childPos[height]));
+        PageNum nextPage = node->getNext();
+        PageNum prePage = node->getPre();
+        if (nextPage != -1)
+        {
+            BTreeNode* nextNode;
+            CHECK_NONZERO(FetchNode(nextPage, nextNode));
+            nextNode->setPre(prePage);
+            CHECK_NONZERO(DeleteNode(nextNode));
+        }
+        if (prePage != -1)
+        {
+            BTreeNode* preNode;
+            CHECK_NONZERO(FetchNode(prePage, preNode));
+            preNode->setNext(nextPage);
+            CHECK_NONZERO(DeleteNode(preNode));
+        }
+        PageNum nodePage = node->getPageNum();
+        assert(node == path[height + 1]);
+        CHECK_NONZERO(DeleteNode(node));
+        path[height + 1] = NULL;
+        CHECK_NONZERO(DisposePage(nodePage));
+        node = father;
+    }
+    if (height >= 0)
+        return OK_RC;
+    assert(node == rootNode);
+    assert(node->getNum() == 0);
+    // any open index needs an root, so we can't delete root and SetHeight(0)
+    CHECK_NONZERO(SetHeight(1));
+    return OK_RC;
+}
+
+RC IX_IndexHandle::ForcePages()
+{
+    RC rc;
+    CHECK_NONZERO(IsValid());
+    if (rootNode)
+    {
+        PRINT_NONZERO(fileHandle->MarkDirty(fileHeader.rootPage));
+        rootNode->setUnchanged();
+    }
+    if (path)
+        for (int i = 1; i < fileHeader.height; ++i)
+            if (path[i] && path[i]->nodeChanged())
+            {
+                CHECK_NONZERO(fileHandle->MarkDirty(path[i]->getPageNum()));
+                path[i]->setUnchanged();
+            }
+    CHECK_NONZERO(fileHandle->ForcePages(-1));
     return OK_RC;
 }

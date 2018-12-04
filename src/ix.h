@@ -46,16 +46,18 @@ public:
         return fileHeader.height;
     }
     RC FindLargestLeaf(BTreeNode* &node);
+    RC FindSmallestLeaf(BTreeNode* &node);
     RC FetchNode(PageNum page, BTreeNode* &node) const;
-    
+    AttrType GetAttrType() const { return fileHeader.attrType; }
+    int GetAttrLength() const { return fileHeader.attrLength; }
 
 private:
     RC AllocatePage(PageNum& pageNum);
     RC GetFileHeader();
     RC IsValid() const;
     RC DeleteNode(BTreeNode* &node);
-
     RC SetHeight(int h);
+    RC DisposePage(PageNum pageNum);
     bool fileOpen;
     bool headerChanged;
     BTreeNode* rootNode;
@@ -117,6 +119,7 @@ private:
 #define IX_NODEISFULL           (START_IX_WARN + 1) // node is full, cannot insert an entry
 #define IX_NODEISEMPTY          (START_IX_WARN + 2) // node is empty, cannot delete an entry
 #define IX_ENTRYEXISTS          (START_IX_WARN + 3) // entry exists
+#define IX_ENTRYNOTEXIST        (START_IX_WARN + 4) // entry doesn't exist
 
 #define IX_ERROR                (START_IX_ERR - 0) // error
 #define IX_LASTERROR            IX_ERROR
