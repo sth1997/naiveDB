@@ -9,7 +9,7 @@ using namespace std;
         if (rc < 0) \
             return rc; \
         else \
-            printf("WARNING: %d \n", rc); } \
+            printf("ix_ihdl WARNING: %d \n", rc); } \
 }
 
 #define PRINT_NONZERO(x) { \
@@ -17,7 +17,7 @@ using namespace std;
         if (rc < 0) \
             printf("ERROR: %d \n", rc); \
         else \
-            printf("WARNING: %d \n", rc); } \
+            printf("ix_ihdl print WARNING: %d \n", rc); } \
 }
 
 IX_IndexHandle::IX_IndexHandle():

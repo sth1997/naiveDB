@@ -23,8 +23,6 @@ struct IX_FileHeader
 };
 
 class IX_IndexHandle {
-    friend class IX_Manager;
-    friend class IX_IndexScan;
 public:
     IX_IndexHandle();
     ~IX_IndexHandle();
@@ -50,6 +48,8 @@ public:
     RC FetchNode(PageNum page, BTreeNode* &node) const;
     AttrType GetAttrType() const { return fileHeader.attrType; }
     int GetAttrLength() const { return fileHeader.attrLength; }
+    bool getHeaderChanged() { return headerChanged; }
+    PF_FileHandle* getFileHandle() {return fileHandle; }
 
 private:
     RC AllocatePage(PageNum& pageNum);
@@ -122,7 +122,6 @@ private:
 #define IX_ENTRYNOTEXIST        (START_IX_WARN + 4) // entry doesn't exist
 
 #define IX_ERROR                (START_IX_ERR - 0) // error
-#define IX_LASTERROR            IX_ERROR
 #define IX_ALREADYINNODE        (START_IX_ERR - 1) // this key is already in this node
 #define IX_NOTINORDER           (START_IX_ERR - 2) // the keys are not in order after insertion
 #define IX_NOTINNODE            (START_IX_ERR - 3) // the key is not in the node

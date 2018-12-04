@@ -9,7 +9,15 @@ using namespace std;
         if (rc < 0) \
             return rc; \
         else \
-            printf("WARNING: %d \n", rc); } \
+            printf("btreenode WARNING: %d \n", rc); } \
+}
+
+#define PRINT_NONZERO(x) { \
+    if ((rc = x)) { \
+        if (rc < 0) \
+            printf("ERROR: %d \n", rc); \
+        else \
+            printf("ix_ihdl print WARNING: %d \n", rc); } \
 }
 
 BTreeNode::BTreeNode(AttrType type, int len, PF_PageHandle& handle, bool needInit):
@@ -19,22 +27,8 @@ BTreeNode::BTreeNode(AttrType type, int len, PF_PageHandle& handle, bool needIni
     maxKeyNum = (PF_PAGE_SIZE - sizeof(PageNum) * 2 - sizeof(int)) / (sizeof(PageNum) + attrLength + sizeof(RID));
     char* data;
     RC rc;
-    rc = handle.GetData(data);
-    if (rc < 0)
-    {
-        printf("ERROR: %d \n", rc);
-        return;
-    }
-    else
-        printf("WARNING: %d \n", rc);
-    rc = handle.GetPageNum(thisPageNum);
-    if (rc < 0)
-    {
-        printf("ERROR: %d \n", rc);
-        return;
-    }
-    else
-        printf("WARNING: %d \n", rc);
+    PRINT_NONZERO(handle.GetData(data));
+    PRINT_NONZERO(handle.GetPageNum(thisPageNum));
     pages = (PageNum*) data;
     pre = &pages[maxKeyNum];
     next = &pre[1];
