@@ -34,6 +34,10 @@ public:
     {
         changed = true;
     }
+    void setUnchanged()
+    {
+        changed = false;
+    }
     void setNext(const PageNum& _next)
     {
         *next = _next;
