@@ -136,7 +136,6 @@ int BTreeNode::findKeyGE(const char* key, const RID& rid) const
 //return -1 means not found
 int BTreeNode::findKey(const char* key, const RID& rid) const
 {
-    assert(getNum() > 0);
     for (int i = getNum() - 1; i >= 0; --i)
     {
         if (CMP(key, getKey(i), rid, getRID(i)) == 0)

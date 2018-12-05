@@ -153,7 +153,7 @@ RC IX_IndexHandle::SetHeight(int h)
     
     childPos = new int[h - 1];
     for (int i = 0; i < h - 1; ++i)
-        path[i] = NULL;
+        childPos[i] = -1;
     return OK_RC;
 }
 
@@ -287,6 +287,15 @@ RC IX_IndexHandle::Open(PF_FileHandle* handle)
     return OK_RC;
 }
 
+RC IX_IndexHandle::UpdateLargest()
+{
+    RC rc;
+    CHECK_NONZERO(IsValid());
+    memcpy(largestKey, rootNode->getKey(rootNode->getNum() - 1), fileHeader.attrLength);
+    largestRID = rootNode->getRID(rootNode->getNum() - 1);
+    return OK_RC;
+}
+
 RC IX_IndexHandle::InsertEntry(void *pData, const RID& rid)
 {
     RC rc;
@@ -301,7 +310,7 @@ RC IX_IndexHandle::InsertEntry(void *pData, const RID& rid)
     if (tmp_pos != -1)
         return IX_ENTRYEXISTS;
     
-    if (node->getNum() == 0 || node->CMP((char*)pData, largestKey, rid, largestRID))
+    if (node->getNum() == 0 || node->CMP((char*)pData, largestKey, rid, largestRID) > 0)
     {
         newLargest = true;
     }
@@ -399,6 +408,7 @@ RC IX_IndexHandle::InsertEntry(void *pData, const RID& rid)
     PF_PageHandle pageHandle;
     CHECK_NONZERO(fileHandle->GetThisPage(page, pageHandle));
     rootNode = new BTreeNode(fileHeader.attrType, fileHeader.attrLength, pageHandle, true);
+    path[0] = rootNode;
     CHECK_NONZERO(rootNode->insert(node->getLargestKey(), node->getLargestRID(), node->getPageNum()));
     CHECK_NONZERO(rootNode->insert(newNode->getLargestKey(), newNode->getLargestRID(), newNode->getPageNum()));
 
@@ -492,7 +502,10 @@ RC IX_IndexHandle::DeleteEntry(void* pData, const RID& rid)
         node = father;
     }
     if (height >= 0)
+    {
+        UpdateLargest();
         return OK_RC;
+    }
     assert(node == rootNode);
     assert(node->getNum() == 0);
     // any open index needs an root, so we can't delete root and SetHeight(0)
@@ -517,5 +530,15 @@ RC IX_IndexHandle::ForcePages()
                 path[i]->setUnchanged();
             }
     CHECK_NONZERO(fileHandle->ForcePages(-1));
+    return OK_RC;
+}
+
+RC IX_IndexHandle::Print() const
+{
+    RC rc;
+    CHECK_NONZERO(IsValid());
+    printf("Root page = %d\n", fileHeader.rootPage);
+    printf("height = %d\n", fileHeader.height);
+    printf("max key num = %d\n", rootNode->getMaxKeyNum());
     return OK_RC;
 }
