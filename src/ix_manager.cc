@@ -70,12 +70,11 @@ RC IX_Manager::OpenIndex(const char* fileName,
                          IX_IndexHandle& indexHandle) {
     RC rc;
     PF_FileHandle pf_fhdl;
-    char* pData;
     stringstream name;
     name << fileName << "." << indexNo;
     // pf_mgr -> pf_fhdl -> pf_phdl -> ix_fhdr
     CHECK_NOZERO(pf_mgr.OpenFile(name.str().c_str(), pf_fhdl));
-    indexHandle.Open(&pf_fhdl);
+    CHECK_NOZERO(indexHandle.Open(&pf_fhdl));
     return OK_RC;
 }
 
@@ -85,7 +84,8 @@ RC IX_Manager::CloseIndex(IX_IndexHandle& indexHandle) {
         indexHandle.SetFileHeader();
     }
     PF_FileHandle pf_fhdl = *indexHandle.getFileHandle();
-    indexHandle.~IX_IndexHandle();
+    indexHandle.ForcePages();
+    indexHandle.CleanUp();
     CHECK_NOZERO(pf_mgr.CloseFile(pf_fhdl));
     // TODO
     return OK_RC;

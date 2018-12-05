@@ -37,7 +37,7 @@ public:
     // Force index files to disk
     RC ForcePages();
 
-    RC SetFileHeader() const;
+    RC SetFileHeader();
     RC FindLeaf(const void* pData, const RID& rid, BTreeNode* &node);
     int GetHeight() const
     {
@@ -57,6 +57,7 @@ public:
     RC Print() const;
     char* GetLargestKey() const { return largestKey; }
     RID GetLargestRID() const { return largestRID; }
+    RC CleanUp();
 
 private:
     RC AllocatePage(PageNum& pageNum);

@@ -1,7 +1,5 @@
 #include "gtest/gtest.h"
 #include "ix.h"
-#include <iostream>
-#include <fstream>
 
 // int value has 1000B, so every node can only countain few int values
 #define INTLENGTH 1000
@@ -30,12 +28,9 @@ protected:
     virtual void SetUp() {
         RC rc;
         system("rm -f ix_test_file*");
-        //fstream _file;
         rc = imm.CreateIndex(fileName, 0, INT, 1000);
         ASSERT_EQ(OK_RC, rc);
-        printf("before open\n");
         rc = imm.OpenIndex(fileName, 0, indexHandle);
-        printf("after open\n");
         ASSERT_EQ(OK_RC, rc);
     }
 
@@ -83,6 +78,9 @@ TEST_F(IX_IndexHandleTest, TestInsert) {
     ASSERT_EQ(rootNode->getNum(), 2);
     ASSERT_EQ(*(int*) rootNode->getKey(0), 3);
     ASSERT_EQ(*(int*) rootNode->getKey(1), 9);
+    ASSERT_EQ(imm.CloseIndex(indexHandle), OK_RC);
+    ASSERT_EQ(imm.OpenIndex(fileName, 0, indexHandle), OK_RC);
+    rootNode = indexHandle.GetRootNode();
     ASSERT_EQ(*(int*)indexHandle.GetLargestKey(), 9);
     ASSERT_EQ(remove(9, key), OK_RC);
     ASSERT_EQ(*(int*)indexHandle.GetLargestKey(), 7);

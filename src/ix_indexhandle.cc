@@ -26,13 +26,16 @@ IX_IndexHandle::IX_IndexHandle():
     fileHeader.height = 0;
 }
 
-IX_IndexHandle::~IX_IndexHandle()
+RC IX_IndexHandle::CleanUp()
 {
     RC rc;
+    if (headerChanged)
+        CHECK_NONZERO(SetFileHeader());
+    fileOpen = false;
     if (rootNode)
     {
-        PRINT_NONZERO(fileHandle->MarkDirty(fileHeader.rootPage));
-        PRINT_NONZERO(fileHandle->UnpinPage(fileHeader.rootPage));
+        CHECK_NONZERO(fileHandle->MarkDirty(fileHeader.rootPage));
+        CHECK_NONZERO(fileHandle->UnpinPage(fileHeader.rootPage));
         delete rootNode;
         rootNode = NULL;
     }
@@ -47,7 +50,7 @@ IX_IndexHandle::~IX_IndexHandle()
         for (int i = 1; i < fileHeader.height; ++i)
         {
             if (path[i])
-                PRINT_NONZERO(DeleteNode(path[i]));
+                CHECK_NONZERO(DeleteNode(path[i]));
         }
         delete []path;
         path = NULL;
@@ -62,7 +65,11 @@ IX_IndexHandle::~IX_IndexHandle()
         delete [] (char*)largestKey;
         largestKey = NULL;
     }
+}
 
+IX_IndexHandle::~IX_IndexHandle()
+{
+    CleanUp();
 }
 
 RC IX_IndexHandle::DeleteNode(BTreeNode* &node)
@@ -79,7 +86,7 @@ RC IX_IndexHandle::DeleteNode(BTreeNode* &node)
     return OK_RC;
 }
 
-RC IX_IndexHandle::SetFileHeader() const
+RC IX_IndexHandle::SetFileHeader()
 {
     PF_PageHandle pageHandle;
     RC rc;
@@ -89,6 +96,7 @@ RC IX_IndexHandle::SetFileHeader() const
     memcpy(buf, &fileHeader, sizeof(fileHeader));
     CHECK_NONZERO(fileHandle->MarkDirty(0));
     CHECK_NONZERO(fileHandle->UnpinPage(0));
+    headerChanged = false;
     return OK_RC;
 }
 
