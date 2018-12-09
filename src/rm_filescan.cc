@@ -207,6 +207,7 @@ RC RM_FileScan::GetNextRec(RM_Record& rec) {
                 memcpy(newData, recData, recordSize);
                 RID newRid(pageNum, slotNum);
                 rec.SetData(newData, recordSize, newRid);
+                delete []newData;
             }
         }
 
