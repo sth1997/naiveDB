@@ -117,7 +117,7 @@ class RM_FileScan {
         PageNum pageNum;                                 // Current page number
         SlotNum slotNum;                                 // Current slot number
 
-        RM_FileHandle rm_fhdl;                           // File handle for the file
+        const RM_FileHandle* rm_fhdl;                           // File handle for the file
         AttrType attrType;                                  // Attribute type
         int attrLength;                                     // Attribute length
         int attrOffset;                                     // Attribute offset

@@ -12,7 +12,10 @@ RM_FileHandle::RM_FileHandle() : filehandle(NULL), fileHeaderChanged(false)
 {}
 
 RM_FileHandle::~RM_FileHandle()
-{}
+{
+    if (filehandle)
+        DeleteFileHandle();
+}
 
 RC RM_FileHandle::Init(RM_FileHeader header, PF_FileHandle* pffh)
 {

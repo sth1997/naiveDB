@@ -53,7 +53,7 @@ RC RM_FileScan::OpenScan(const RM_FileHandle& fileHandle,
     }
 
     // Store the class variables
-    this->rm_fhdl = fileHandle;
+    this->rm_fhdl = &fileHandle;
     this->attrType = attrType;
     this->attrLength = attrLength;
     this->attrOffset = attrOffset;
@@ -161,20 +161,20 @@ RC RM_FileScan::GetNextRec(RM_Record& rec) {
         return RM_EOF;
     }
     RC rc;
-    PF_FileHandle* pf_fhdl = rm_fhdl.GetPFFileHandle();
+    PF_FileHandle* pf_fhdl = rm_fhdl->GetPFFileHandle();
     bool recordMatch = false;
     while (!recordMatch) {
         // get bitmap
         RM_PageHeader rm_phdr;
         PF_PageHandle pf_phdl;
         CHECK_NOZERO(pf_fhdl->GetThisPage(pageNum, pf_phdl));
-        rm_fhdl.GetPageHeader(pf_phdl, rm_phdr);
+        rm_fhdl->GetPageHeader(pf_phdl, rm_phdr);
         RM_BitMap bitmap(rm_phdr.freeSlotsNum, rm_phdr.freeSlots);
         bool isFree;
         bitmap.isFree(slotNum, isFree);
         if (!isFree) {
             char* recData;
-            rm_fhdl.GetSlotPointer(pf_phdl, slotNum, recData);
+            rm_fhdl->GetSlotPointer(pf_phdl, slotNum, recData);
             
             switch (attrType) {
                 case INT: {
@@ -201,7 +201,7 @@ RC RM_FileScan::GetNextRec(RM_Record& rec) {
 
             if (recordMatch) {
                 // printf("record matched!\n");
-                RM_FileHeader rm_fhdr = rm_fhdl.GetRMFileHeader();
+                RM_FileHeader rm_fhdr = rm_fhdl->GetRMFileHeader();
                 int recordSize = rm_fhdr.recordSize;
                 char* newData = new char[recordSize];
                 memcpy(newData, recData, recordSize);
