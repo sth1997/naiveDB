@@ -37,7 +37,7 @@ public:
     // Force index files to disk
     RC ForcePages();
 
-    RC SetFileHeader() const;
+    RC SetFileHeader();
     RC FindLeaf(const void* pData, const RID& rid, BTreeNode* &node);
     int GetHeight() const
     {
@@ -45,11 +45,19 @@ public:
     }
     RC FindLargestLeaf(BTreeNode* &node);
     RC FindSmallestLeaf(BTreeNode* &node);
+    BTreeNode* GetRootNode() const
+    {
+        return rootNode;
+    }
     RC FetchNode(PageNum page, BTreeNode* &node) const;
     AttrType GetAttrType() const { return fileHeader.attrType; }
     int GetAttrLength() const { return fileHeader.attrLength; }
     bool getHeaderChanged() { return headerChanged; }
     PF_FileHandle* getFileHandle() {return fileHandle; }
+    RC Print() const;
+    char* GetLargestKey() const { return largestKey; }
+    RID GetLargestRID() const { return largestRID; }
+    RC CleanUp();
 
 private:
     RC AllocatePage(PageNum& pageNum);
@@ -58,6 +66,7 @@ private:
     RC DeleteNode(BTreeNode* &node);
     RC SetHeight(int h);
     RC DisposePage(PageNum pageNum);
+    RC UpdateLargest();
     bool fileOpen;
     bool headerChanged;
     BTreeNode* rootNode;
