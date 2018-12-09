@@ -22,7 +22,7 @@ LEX            = flex
 # -O1 - Basic optimization
 # -Wall - All warnings
 # -DDEBUG_PF - This turns on the LOG file for lots of BufferMgr info
-CFLAGS         = -g -O1 -Wall -Wextra $(STATS_OPTION) $(INC_DIRS) #-Werror
+CFLAGS         = -g -O1 -Wall -Wextra $(STATS_OPTION) $(INC_DIRS) -std=c++11 -Werror
 
 # The STATS_OPTION can be set to -DPF_STATS or to nothing to turn on and
 # off buffer manager statistics.  The student should not modify this
@@ -37,9 +37,10 @@ PF_SOURCES     = pf_buffermgr.cc pf_error.cc pf_filehandle.cc \
                  pf_statistics.cc statistics.cc pf_manager_gtest.cc
 RM_SOURCES     = rm_record.cc rm_bitmap.cc rm_error.cc \
 				 rm_manager.cc rm_filehandle.cc rm_filescan.cc \
-				 rm_manager_gtest.cc #rm_filehandle_gtest.cc # rm_filehandle_gtest.cc
+				 rm_manager_gtest.cc rm_filehandle_gtest.cc rm_filescan_gtest.cc
 IX_SOURCES     = ix_manager.cc ix_indexscan.cc ix_error.cc \
-				 ix_indexhandle.cc btreenode.cc ix_manager_gtest.cc ix_indexhandle_gtest.cc
+				 ix_indexhandle.cc btreenode.cc ix_manager_gtest.cc \
+				 ix_indexhandle_gtest.cc ix_indexscan_gtest.cc
 
 SM_SOURCES     = #sm_stub.cc printer.cc
 QL_SOURCES     = #ql_manager_stub.cc

@@ -65,6 +65,7 @@ RC IX_IndexHandle::CleanUp()
         delete [] (char*)largestKey;
         largestKey = NULL;
     }
+    return OK_RC;
 }
 
 IX_IndexHandle::~IX_IndexHandle()
@@ -176,6 +177,7 @@ RC IX_IndexHandle::FetchNode(PageNum page, BTreeNode* &node) const
 }
 
 //return a pointer to the leaf node which the key should be put in
+// >= pData&rid smallest leaf
 RC IX_IndexHandle::FindLeaf(const void* pData, const RID& rid, BTreeNode* &node)
 {
     RC rc;
@@ -549,4 +551,15 @@ RC IX_IndexHandle::Print() const
     printf("height = %d\n", fileHeader.height);
     printf("max key num = %d\n", rootNode->getMaxKeyNum());
     return OK_RC;
+}
+
+RC IX_IndexHandle::Pin(PageNum p) {
+  PF_PageHandle ph;
+  RC rc = fileHandle->GetThisPage(p, ph); 
+  return rc;
+}
+
+RC IX_IndexHandle::UnPin(PageNum p) {
+  RC rc = fileHandle->UnpinPage(p); 
+  return rc;
 }

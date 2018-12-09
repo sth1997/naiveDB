@@ -51,6 +51,7 @@ RC IX_Manager::CreateIndex(const char* fileName,
     // pf_phdl -> pageNum -> mark dirty -> unpin -> close file
     PageNum pageNum;
     pf_phdl.GetPageNum(pageNum);
+    assert(pageNum == 0);
     CHECK_NOZERO(pf_fhdl.MarkDirty(pageNum));
     CHECK_NOZERO(pf_fhdl.UnpinPage(pageNum));
     CHECK_NOZERO(pf_mgr.CloseFile(pf_fhdl));

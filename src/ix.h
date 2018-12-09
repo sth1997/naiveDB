@@ -58,6 +58,8 @@ public:
     char* GetLargestKey() const { return largestKey; }
     RID GetLargestRID() const { return largestRID; }
     RC CleanUp();
+    RC Pin(PageNum p);
+    RC UnPin(PageNum p);
 
 private:
     RC AllocatePage(PageNum& pageNum);
@@ -120,15 +122,29 @@ public:
     RC CloseScan();
 
 private:
+    int getIntegerValue(char* recordData);              // Get integer attribute value
+    float getFloatValue(char* recordData);              // Get float attribute value
+    std::string getStringValue(char* recordData);       // Get string attribute value
+    template<typename T>
+    bool matchKey(T keyValue, T givenValue);      // Match the key value with the given key
     int scanOpen;                           // Flag to track if scan open
+    IX_IndexHandle ix_ihdl;
+    CompOp compOp;                                      // Comparison operator
+    void* value;                                        // Value to be compared
+    ClientHint pinHint;                                 // Pinning hint
+    BTreeNode* curNode;
+    int curPos;
 };
 
 #define IX_SCAN_CLOSED          (START_IX_WARN + 0) // scan is closed
-#define IX_LASTWARN             IX_SCAN_CLOSED
 #define IX_NODEISFULL           (START_IX_WARN + 1) // node is full, cannot insert an entry
 #define IX_NODEISEMPTY          (START_IX_WARN + 2) // node is empty, cannot delete an entry
 #define IX_ENTRYEXISTS          (START_IX_WARN + 3) // entry exists
 #define IX_ENTRYNOTEXIST        (START_IX_WARN + 4) // entry doesn't exist
+#define IX_DISALLOW_NE          (START_IX_WARN + 5) // disallow ne comparasion
+#define IX_EOF                  (START_IX_WARN + 6) // ix scan end
+#define IX_HANDLEOPEN           (START_IX_WARN + 7) // scan is already open
+#define IX_LASTWARN             IX_HANDLEOPEN
 
 #define IX_ERROR                (START_IX_ERR - 0) // error
 #define IX_ALREADYINNODE        (START_IX_ERR - 1) // this key is already in this node
@@ -140,7 +156,7 @@ private:
 #define IX_OPENFILETWICE        (START_IX_ERR - 7) // open one file twice
 #define IX_INVALIDFILEHANDLE    (START_IX_ERR - 8) // the input PF_FileHandle is invalid
 #define IX_INVALID              (START_IX_ERR - 9) // invalid
-#define IX_NULLKEYDATA          (START_IX_ERR - 10)// the key data pointer = NULL
-#define IX_PFERROR              (START_IX_ERR - 11)      // error in pf
+#define IX_NULLKEYDATA          (START_IX_ERR - 10) // the key data pointer = NULL
+#define IX_PFERROR              (START_IX_ERR - 11) // error in pf
 #define IX_LASTERROR            IX_PFERROR
 #endif

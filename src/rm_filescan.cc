@@ -1,38 +1,42 @@
-#include <cerrno>
 #include <cassert>
+#include <cerrno>
 #include <cstdio>
 #include <iostream>
 #include "rm.h"
 #include "rm_internal.h"
 
-#define CHECK_NOZERO(x) { \
-    if ((rc = x)) { \
-        PF_PrintError(rc); \
-        if (rc < 0) { \
-            return RM_PFERROR; \
-        } \
-    } \
-}
-
+#define CHECK_NOZERO(x)            \
+    {                              \
+        if ((rc = x)) {            \
+            PF_PrintError(rc);     \
+            if (rc < 0) {          \
+                return RM_PFERROR; \
+            }                      \
+        }                          \
+    }
 
 using namespace std;
 
 RM_FileScan::RM_FileScan() {
-    scanOpen = FALSE;
+    scanOpen = false;
 }
 
-RM_FileScan::~RM_FileScan() {
+RM_FileScan::~RM_FileScan() {}
 
-}
-
-RC RM_FileScan::OpenScan(const RM_FileHandle &fileHandle, AttrType attrType, int attrLength,
-                         int attrOffset, CompOp compOp, void *value, ClientHint pinHint) {
+RC RM_FileScan::OpenScan(const RM_FileHandle& fileHandle,
+                         AttrType attrType,
+                         int attrLength,
+                         int attrOffset,
+                         CompOp compOp,
+                         void* value,
+                         ClientHint pinHint) {
     if (attrType != INT && attrType != FLOAT && attrType != STRING) {
         return RM_INVALID_ATTRIBUTE;
     }
 
-    if (compOp != NO_OP && compOp != EQ_OP && compOp != NE_OP && compOp != LT_OP &&
-        compOp != GT_OP && compOp != LE_OP && compOp != GE_OP) {
+    if (compOp != NO_OP && compOp != EQ_OP && compOp != NE_OP &&
+        compOp != LT_OP && compOp != GT_OP && compOp != LE_OP &&
+        compOp != GE_OP) {
         return RM_INVALID_OPERATOR;
     }
 
@@ -48,7 +52,6 @@ RC RM_FileScan::OpenScan(const RM_FileHandle &fileHandle, AttrType attrType, int
         compOp = NO_OP;
     }
 
-
     // Store the class variables
     this->rm_fhdl = fileHandle;
     this->attrType = attrType;
@@ -58,11 +61,11 @@ RC RM_FileScan::OpenScan(const RM_FileHandle &fileHandle, AttrType attrType, int
     this->value = value;
     this->pinHint = pinHint;
 
-    scanOpen = TRUE;
+    scanOpen = true;
 
     // rm_fhdl -> pf_fhdl -> pf_phdl -> headerPageNum
     RC rc;
-    PF_FileHandle *pf_fhdl = fileHandle.GetPFFileHandle();
+    PF_FileHandle* pf_fhdl = fileHandle.GetPFFileHandle();
     PF_PageHandle pf_phdl;
     PageNum headerPageNum;
     CHECK_NOZERO(pf_fhdl->GetFirstPage(pf_phdl));
@@ -75,8 +78,7 @@ RC RM_FileScan::OpenScan(const RM_FileHandle &fileHandle, AttrType attrType, int
         if (rc == PF_EOF) {
             pageNum = RM_NO_FREE_PAGE;
             pageFound = false;
-        }
-        else {
+        } else {
             RM_PrintError(rc);
             if (rc < 0) {
                 return RM_PFERROR;
@@ -89,7 +91,7 @@ RC RM_FileScan::OpenScan(const RM_FileHandle &fileHandle, AttrType attrType, int
 
     // set pageNum and slotNum
     this->pageNum = pageNum;
-    this->slotNum = 1;
+    this->slotNum = 0;
     CHECK_NOZERO(pf_fhdl->UnpinPage(headerPageNum));
     if (pageFound) {
         CHECK_NOZERO(pf_fhdl->UnpinPage(pageNum));
@@ -115,15 +117,18 @@ float RM_FileScan::getFloatValue(char* recData) {
 string RM_FileScan::getStringValue(char* recData) {
     string recordValue = "";
     char* attrPointer = recData + attrOffset;
-    for (int i=0; i<attrLength; i++) {
+    for (int i = 0; i < attrLength; i++) {
         recordValue += attrPointer[i];
     }
     return recordValue;
 }
 
-template<typename T>
+template <typename T>
 bool RM_FileScan::matchRecord(T recordValue, T givenValue) {
-    switch(compOp) {
+    switch (compOp) {
+        case NO_OP:
+            return true;
+            break;
         case EQ_OP:
             return recordValue == givenValue;
             break;
@@ -148,7 +153,7 @@ bool RM_FileScan::matchRecord(T recordValue, T givenValue) {
     return false;
 }
 
-RC RM_FileScan::GetNextRec(RM_Record &rec) {
+RC RM_FileScan::GetNextRec(RM_Record& rec) {
     if (!scanOpen) {
         return RM_SCAN_CLOSED;
     }
@@ -157,56 +162,45 @@ RC RM_FileScan::GetNextRec(RM_Record &rec) {
     }
     RC rc;
     PF_FileHandle* pf_fhdl = rm_fhdl.GetPFFileHandle();
-    PF_PageHandle pf_phdl;
-    RM_PageHeader rm_phdr;
-    char* pData;
-    char* bitmapData;
-    CHECK_NOZERO(pf_fhdl->GetThisPage(pageNum, pf_phdl));
-    rm_fhdl.GetPageHeader(pf_phdl, rm_phdr);
-    CHECK_NOZERO(pf_phdl.GetData(pData));
-    bitmapData = pData + 4 * sizeof(int);
-    RM_BitMap bitmap(rm_phdr.freeSlotsNum, bitmapData);
-
     bool recordMatch = false;
-    while(!recordMatch) {
+    while (!recordMatch) {
+        // get bitmap
+        RM_PageHeader rm_phdr;
+        PF_PageHandle pf_phdl;
+        CHECK_NOZERO(pf_fhdl->GetThisPage(pageNum, pf_phdl));
+        rm_fhdl.GetPageHeader(pf_phdl, rm_phdr);
+        RM_BitMap bitmap(rm_phdr.freeSlotsNum, rm_phdr.freeSlots);
         bool isFree;
         bitmap.isFree(slotNum, isFree);
         if (!isFree) {
             char* recData;
             rm_fhdl.GetSlotPointer(pf_phdl, slotNum, recData);
-
-            if (compOp == NO_OP) {
-                recordMatch = true;
-            } else {
-                switch(attrType) {
-                    case INT: {
-
-                                  int recordValue = getIntegerValue(recData);
-                                  int givenValue = *static_cast<int*>(value);
-                                  recordMatch = matchRecord(recordValue, givenValue);
-                                  break;
-                              }
-                    case FLOAT:
-                              {
-                                  float recordValue = getFloatValue(recData);
-                                  float givenValue = *static_cast<float*>(value);
-                                  recordMatch = matchRecord(recordValue, givenValue);
-                                  break;
-                              }
-                    case STRING:
-                              {
-                                  string recordValue(recData + attrOffset);
-                                  char* givenValueChar = static_cast<char*>(value);
-                                  string givenValue(givenValueChar);
-                                  recordMatch = matchRecord(recordValue, givenValue);
-                                  break;
-                              }
-                    default:
-                        ;
+            
+            switch (attrType) {
+                case INT: {
+                    int recordValue = getIntegerValue(recData);
+                    int givenValue = *static_cast<int*>(value);
+                    recordMatch = matchRecord(recordValue, givenValue);
+                    break;
                 }
+                case FLOAT: {
+                    float recordValue = getFloatValue(recData);
+                    float givenValue = *static_cast<float*>(value);
+                    recordMatch = matchRecord(recordValue, givenValue);
+                    break;
+                }
+                case STRING: {
+                    string recordValue(recData + attrOffset);
+                    char* givenValueChar = static_cast<char*>(value);
+                    string givenValue(givenValueChar);
+                    recordMatch = matchRecord(recordValue, givenValue);
+                    break;
+                }
+                default:;
             }
 
             if (recordMatch) {
+                // printf("record matched!\n");
                 RM_FileHeader rm_fhdr = rm_fhdl.GetRMFileHeader();
                 int recordSize = rm_fhdr.recordSize;
                 char* newData = new char[recordSize];
@@ -216,6 +210,7 @@ RC RM_FileScan::GetNextRec(RM_Record &rec) {
             }
         }
 
+        // printf("slot1=%d, slot2=%d\n", slotNum, rm_phdr.totalSlotsNum);
         if (slotNum < rm_phdr.totalSlotsNum) {
             slotNum++;
         } else {
@@ -228,8 +223,7 @@ RC RM_FileScan::GetNextRec(RM_Record &rec) {
                     } else {
                         return RM_EOF;
                     }
-                }
-                else {
+                } else {
                     RM_PrintError(rc);
                     if (rc < 0) {
                         return RM_PFERROR;
@@ -237,11 +231,7 @@ RC RM_FileScan::GetNextRec(RM_Record &rec) {
                 }
             }
             CHECK_NOZERO(pf_phdl.GetPageNum(pageNum));
-            slotNum = 1;
-            CHECK_NOZERO(pf_phdl.GetData(pData));
-            bitmapData = pData + 4 * sizeof(int);
-            rm_fhdl.GetPageHeader(pf_phdl, rm_phdr);
-            RM_BitMap bitmap(rm_phdr.freeSlotsNum, bitmapData);
+            slotNum = 0;
         }
     }
     if (pinHint == NO_HINT) {
@@ -255,8 +245,7 @@ RC RM_FileScan::CloseScan() {
     if (!scanOpen) {
         return RM_SCAN_CLOSED;
     }
-
-    scanOpen = FALSE;
+    scanOpen = false;
 
     return OK_RC;
 }
