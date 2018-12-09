@@ -8,7 +8,7 @@ protected:
 	virtual void SetUp() 
 	{
 		RC rc;
-		system("rm -f pftestfile");
+		int res = system("rm -f pftestfile");
 		if(
 			(rc = pfm.CreateFile("pftestfile")) 
 			 || (rc =	pfm.OpenFile("pftestfile", fh))

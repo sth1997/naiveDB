@@ -109,7 +109,7 @@ public:
     ~IX_IndexScan();
 
     // Open index scan
-    RC OpenScan(const IX_IndexHandle &indexHandle,
+    RC OpenScan(IX_IndexHandle &indexHandle,
                 CompOp compOp,
                 void *value,
                 ClientHint  pinHint = NO_HINT);
@@ -128,7 +128,7 @@ private:
     template<typename T>
     bool matchKey(T keyValue, T givenValue);      // Match the key value with the given key
     int scanOpen;                           // Flag to track if scan open
-    IX_IndexHandle ix_ihdl;
+    IX_IndexHandle* ix_ihdl;
     CompOp compOp;                                      // Comparison operator
     void* value;                                        // Value to be compared
     ClientHint pinHint;                                 // Pinning hint

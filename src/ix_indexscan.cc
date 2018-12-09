@@ -42,7 +42,7 @@ float IX_IndexScan::getFloatValue(char* recData) {
 string IX_IndexScan::getStringValue(char* recData) {
     string recordValue = "";
     char* attrPointer = recData;
-    for (int i = 0; i < ix_ihdl.GetAttrLength(); i++) {
+    for (int i = 0; i < ix_ihdl->GetAttrLength(); i++) {
         recordValue += attrPointer[i];
     }
     return recordValue;
@@ -78,7 +78,7 @@ bool IX_IndexScan::matchKey(T keyValue, T givenValue) {
     return false;
 }
 
-RC IX_IndexScan::OpenScan(const IX_IndexHandle &indexHandle, CompOp compOp,
+RC IX_IndexScan::OpenScan(IX_IndexHandle &indexHandle, CompOp compOp,
                           void *value, ClientHint  pinHint) {
     if (scanOpen) {
         return IX_HANDLEOPEN;
@@ -88,7 +88,7 @@ RC IX_IndexScan::OpenScan(const IX_IndexHandle &indexHandle, CompOp compOp,
     }
 
     // Store the class variables
-    this->ix_ihdl = indexHandle;
+    this->ix_ihdl = &indexHandle;
     this->compOp = compOp;
     this->value = value;
     this->pinHint = pinHint;
@@ -103,14 +103,14 @@ RC IX_IndexScan::OpenScan(const IX_IndexHandle &indexHandle, CompOp compOp,
         case LT_OP:
         case LE_OP:
         case NE_OP:
-            CHECK_NOZERO(ix_ihdl.FindSmallestLeaf(curNode));
+            //CHECK_NOZERO(ix_ihdl.FindSmallestLeaf(curNode));
             break;
         case EQ_OP:
-            CHECK_NOZERO(ix_ihdl.FindLeaf(value, rid, curNode));
+            CHECK_NOZERO(ix_ihdl->FindLeaf(value, rid, curNode));
             break;
         case GT_OP:
         case GE_OP:
-            CHECK_NOZERO(ix_ihdl.FindLargestLeaf(curNode));
+            CHECK_NOZERO(ix_ihdl->FindLargestLeaf(curNode));
             break;
     }
     curPos = 0;
@@ -122,7 +122,7 @@ RC IX_IndexScan::GetNextEntry(RID &rid) {
         for (int i = curPos; i < curNode->getNum(); i++) {
             char* key = curNode->getKey(i);
             bool keyMatch = false;
-            switch (ix_ihdl.GetAttrType()) {
+            switch (ix_ihdl->GetAttrType()) {
                 case INT: {
                     int keyValue = getIntegerValue(key);
                     int givenValue = *static_cast<int*>(value);
@@ -153,12 +153,12 @@ RC IX_IndexScan::GetNextEntry(RID &rid) {
         }
         curPos = 0;
         PageNum pageNum = curNode->getNext();
-        ix_ihdl.UnPin(curNode->getPageNum());
+        ix_ihdl->UnPin(curNode->getPageNum());
         delete curNode;
         curNode = NULL;
-        ix_ihdl.FetchNode(pageNum, curNode);
+        ix_ihdl->FetchNode(pageNum, curNode);
         if (curNode != NULL) {
-            ix_ihdl.Pin(curNode->getPageNum());
+            ix_ihdl->Pin(curNode->getPageNum());
         }
     }
     return IX_EOF;

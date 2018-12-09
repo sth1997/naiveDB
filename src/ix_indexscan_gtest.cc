@@ -13,7 +13,7 @@ class IX_IndexScanTest : public ::testing::Test {
     IX_IndexScanTest() : imm(pfm) {}
     virtual void SetUp() {
         RC rc;
-        system("rm -f ix_test_file*");
+        int res = system("rm -f ix_test_file*");
         rc = imm.CreateIndex(fileName, 0, INT, 4);
         ASSERT_EQ(OK_RC, rc);
         rc = imm.OpenIndex(fileName, 0, ix_ihdl);
