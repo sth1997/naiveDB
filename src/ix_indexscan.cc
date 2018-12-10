@@ -94,6 +94,7 @@ RC IX_IndexScan::OpenScan(IX_IndexHandle &indexHandle, CompOp compOp,
     this->pinHint = pinHint;
 
     scanOpen = true;
+    fetched = false;
 
     // Set up current pointers based on btree
     RC rc;
@@ -153,9 +154,16 @@ RC IX_IndexScan::GetNextEntry(RID &rid) {
             }
         }
         PageNum pageNum = curNode->getNext();
-        ix_ihdl->DeleteNode(curNode);
+        if (fetched) {
+            printf("fetched\n");
+            ix_ihdl->DeleteNode(curNode);
+        } else {
+            printf("not fetched\n");
+            curNode = NULL;
+        }
         if (pageNum != -1) {
             ix_ihdl->FetchNode(pageNum, curNode);
+            fetched = true;
             curPos = 0;
             ix_ihdl->Pin(curNode->getPageNum());
         }
