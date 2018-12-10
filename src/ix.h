@@ -58,6 +58,7 @@ public:
     char* GetLargestKey() const { return largestKey; }
     RID GetLargestRID() const { return largestRID; }
     RC CleanUp();
+    RC DeleteNode(BTreeNode* &node);
     RC Pin(PageNum p);
     RC UnPin(PageNum p);
 
@@ -65,7 +66,6 @@ private:
     RC AllocatePage(PageNum& pageNum);
     RC GetFileHeader();
     RC IsValid() const;
-    RC DeleteNode(BTreeNode* &node);
     RC SetHeight(int h);
     RC DisposePage(PageNum pageNum);
     RC UpdateLargest();

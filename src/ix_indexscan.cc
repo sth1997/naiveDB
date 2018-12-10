@@ -103,7 +103,7 @@ RC IX_IndexScan::OpenScan(IX_IndexHandle &indexHandle, CompOp compOp,
         case LT_OP:
         case LE_OP:
         case NE_OP:
-            //CHECK_NOZERO(ix_ihdl.FindSmallestLeaf(curNode));
+            CHECK_NOZERO(ix_ihdl->FindSmallestLeaf(curNode));
             break;
         case EQ_OP:
             CHECK_NOZERO(ix_ihdl->FindLeaf(value, rid, curNode));
@@ -145,19 +145,18 @@ RC IX_IndexScan::GetNextEntry(RID &rid) {
                 default:
                     ;
             }
-            curPos = i;
             if (keyMatch) {
+                printf("find at %d\n", i);
                 rid = curNode->getRID(i);
+                curPos = i + 1;
                 return OK_RC;
             }
         }
-        curPos = 0;
         PageNum pageNum = curNode->getNext();
-        ix_ihdl->UnPin(curNode->getPageNum());
-        delete curNode;
-        curNode = NULL;
-        ix_ihdl->FetchNode(pageNum, curNode);
-        if (curNode != NULL) {
+        ix_ihdl->DeleteNode(curNode);
+        if (pageNum != -1) {
+            ix_ihdl->FetchNode(pageNum, curNode);
+            curPos = 0;
             ix_ihdl->Pin(curNode->getPageNum());
         }
     }
