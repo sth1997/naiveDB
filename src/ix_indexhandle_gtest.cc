@@ -94,3 +94,14 @@ TEST_F(IX_IndexHandleTest, TestInsert) {
     ASSERT_EQ(indexHandle.GetHeight(), 1);
     ASSERT_EQ(rootNode->getNum(), 0);
 }
+
+TEST_F(IX_IndexHandleTest, TestInsert1) {
+    ASSERT_EQ(indexHandle.GetHeight(), 1);
+    LongInt key;
+    int cnt = 100;
+
+    for (int i = 1; i < cnt; i++) {
+        ASSERT_EQ(insert(i, key), OK_RC);
+    }
+    ASSERT_EQ(indexHandle.GetHeight(), 6);
+}

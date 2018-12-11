@@ -17,7 +17,9 @@ using namespace std;
 // Constructor
 IX_IndexScan::IX_IndexScan() {
     // Set open scan flag to false
-    scanOpen = FALSE;
+    scanOpen = false;
+    fetched = false;
+    desc = false;
 }
 
 // Destructor
@@ -42,7 +44,7 @@ float IX_IndexScan::getFloatValue(char* recData) {
 string IX_IndexScan::getStringValue(char* recData) {
     string recordValue = "";
     char* attrPointer = recData;
-    for (int i = 0; i < ix_ihdl.GetAttrLength(); i++) {
+    for (int i = 0; i < ix_ihdl->GetAttrLength(); i++) {
         recordValue += attrPointer[i];
     }
     return recordValue;
@@ -78,7 +80,7 @@ bool IX_IndexScan::matchKey(T keyValue, T givenValue) {
     return false;
 }
 
-RC IX_IndexScan::OpenScan(const IX_IndexHandle &indexHandle, CompOp compOp,
+RC IX_IndexScan::OpenScan(IX_IndexHandle &indexHandle, CompOp compOp,
                           void *value, ClientHint  pinHint) {
     if (scanOpen) {
         return IX_HANDLEOPEN;
@@ -88,7 +90,7 @@ RC IX_IndexScan::OpenScan(const IX_IndexHandle &indexHandle, CompOp compOp,
     }
 
     // Store the class variables
-    this->ix_ihdl = indexHandle;
+    this->ix_ihdl = &indexHandle;
     this->compOp = compOp;
     this->value = value;
     this->pinHint = pinHint;
@@ -103,29 +105,34 @@ RC IX_IndexScan::OpenScan(const IX_IndexHandle &indexHandle, CompOp compOp,
         case LT_OP:
         case LE_OP:
         case NE_OP:
-            CHECK_NOZERO(ix_ihdl.FindSmallestLeaf(curNode));
+            CHECK_NOZERO(ix_ihdl->FindSmallestLeaf(curNode));
+            curPos = 0;
             break;
         case EQ_OP:
-            CHECK_NOZERO(ix_ihdl.FindLeaf(value, rid, curNode));
+            CHECK_NOZERO(ix_ihdl->FindLeaf(value, rid, curNode));
+            curPos = 0;
             break;
         case GT_OP:
         case GE_OP:
-            CHECK_NOZERO(ix_ihdl.FindLargestLeaf(curNode));
+            CHECK_NOZERO(ix_ihdl->FindLargestLeaf(curNode));
+            curPos = curNode->getNum() - 1;
+            desc = true;
             break;
     }
-    curPos = 0;
     return OK_RC;
 }
 
 RC IX_IndexScan::GetNextEntry(RID &rid) {
     while (curNode != NULL) {
-        for (int i = curPos; i < curNode->getNum(); i++) {
+        for (int i = curPos; (!desc && i < curNode->getNum()) || (desc && i >= 0); (!desc && i++) || (desc && i--)) {
+            // printf("pn=%d, kn=%d, i=%d\n", curNode->getPageNum(), curNode->getNum(), i);
             char* key = curNode->getKey(i);
             bool keyMatch = false;
-            switch (ix_ihdl.GetAttrType()) {
+            switch (ix_ihdl->GetAttrType()) {
                 case INT: {
                     int keyValue = getIntegerValue(key);
                     int givenValue = *static_cast<int*>(value);
+                    // printf("%d %d %d\n", keyValue, compOp, givenValue);
                     keyMatch = matchKey(keyValue, givenValue);
                     break;
                 }
@@ -145,20 +152,28 @@ RC IX_IndexScan::GetNextEntry(RID &rid) {
                 default:
                     ;
             }
-            curPos = i;
             if (keyMatch) {
+                // printf("find at %d\n", i);
                 rid = curNode->getRID(i);
+                curPos = desc ? i - 1 : i + 1;
                 return OK_RC;
             }
         }
-        curPos = 0;
-        PageNum pageNum = curNode->getNext();
-        ix_ihdl.UnPin(curNode->getPageNum());
-        delete curNode;
-        curNode = NULL;
-        ix_ihdl.FetchNode(pageNum, curNode);
-        if (curNode != NULL) {
-            ix_ihdl.Pin(curNode->getPageNum());
+        PageNum pageNum = desc ? curNode->getPre() : curNode->getNext();
+        if (fetched) {
+            // printf("fetched\n");
+            ix_ihdl->DeleteNode(curNode);
+        } else {
+            // printf("not fetched\n");
+            curNode = NULL;
+        }
+        if (pageNum != -1) {
+            ix_ihdl->FetchNode(pageNum, curNode);
+            fetched = true;
+            if (curNode != NULL) {
+                curPos = desc ? curNode->getNum() - 1 : 0;
+                ix_ihdl->Pin(curNode->getPageNum());
+            }
         }
     }
     return IX_EOF;

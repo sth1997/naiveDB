@@ -58,6 +58,7 @@ public:
     char* GetLargestKey() const { return largestKey; }
     RID GetLargestRID() const { return largestRID; }
     RC CleanUp();
+    RC DeleteNode(BTreeNode* &node);
     RC Pin(PageNum p);
     RC UnPin(PageNum p);
 
@@ -65,7 +66,6 @@ private:
     RC AllocatePage(PageNum& pageNum);
     RC GetFileHeader();
     RC IsValid() const;
-    RC DeleteNode(BTreeNode* &node);
     RC SetHeight(int h);
     RC DisposePage(PageNum pageNum);
     RC UpdateLargest();
@@ -109,7 +109,7 @@ public:
     ~IX_IndexScan();
 
     // Open index scan
-    RC OpenScan(const IX_IndexHandle &indexHandle,
+    RC OpenScan(IX_IndexHandle &indexHandle,
                 CompOp compOp,
                 void *value,
                 ClientHint  pinHint = NO_HINT);
@@ -128,12 +128,14 @@ private:
     template<typename T>
     bool matchKey(T keyValue, T givenValue);      // Match the key value with the given key
     int scanOpen;                           // Flag to track if scan open
-    IX_IndexHandle ix_ihdl;
+    IX_IndexHandle* ix_ihdl;
     CompOp compOp;                                      // Comparison operator
     void* value;                                        // Value to be compared
     ClientHint pinHint;                                 // Pinning hint
     BTreeNode* curNode;
     int curPos;
+    bool fetched;
+    bool desc;
 };
 
 #define IX_SCAN_CLOSED          (START_IX_WARN + 0) // scan is closed
