@@ -28,6 +28,11 @@ struct DataRelInfo
         return *this;
     }
     
+    static int memberNumber()
+    {
+        return 3;
+    }
+    
     int recordSize;
     int attrCount;
     char relName[MAXNAME + 1];
@@ -59,6 +64,12 @@ struct DataAttrInfo
             memcpy(this, &tmp, sizeof(DataAttrInfo));
         return *this;
     }
+
+    static int memberNumber()
+    {
+        return 6;
+    }
+
     int offset;
     AttrType attrType;
     int attrLength;

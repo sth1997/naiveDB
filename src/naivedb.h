@@ -10,7 +10,7 @@
 //
 // Globally-useful defines
 //
-#define MAXNAME       24                // maximum length of a relation
+#define MAXNAME       31                // maximum length of a relation
                                         // or attribute name
 #define MAXSTRINGLEN  255               // maximum length of a
                                         // string-type attribute
