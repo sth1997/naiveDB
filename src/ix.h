@@ -59,8 +59,6 @@ public:
     RID GetLargestRID() const { return largestRID; }
     RC CleanUp();
     RC DeleteNode(BTreeNode* &node);
-    RC Pin(PageNum p);
-    RC UnPin(PageNum p);
 
 private:
     RC AllocatePage(PageNum& pageNum);

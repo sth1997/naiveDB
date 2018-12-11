@@ -553,14 +553,3 @@ RC IX_IndexHandle::Print() const
     printf("max key num = %d\n", rootNode->getMaxKeyNum());
     return OK_RC;
 }
-
-RC IX_IndexHandle::Pin(PageNum p) {
-  PF_PageHandle ph;
-  RC rc = fileHandle->GetThisPage(p, ph); 
-  return rc;
-}
-
-RC IX_IndexHandle::UnPin(PageNum p) {
-  RC rc = fileHandle->UnpinPage(p); 
-  return rc;
-}

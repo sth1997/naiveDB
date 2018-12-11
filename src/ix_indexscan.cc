@@ -172,7 +172,6 @@ RC IX_IndexScan::GetNextEntry(RID &rid) {
             fetched = true;
             if (curNode != NULL) {
                 curPos = desc ? curNode->getNum() - 1 : 0;
-                ix_ihdl->Pin(curNode->getPageNum());
             }
         }
     }
@@ -187,7 +186,10 @@ RC IX_IndexScan::CloseScan() {
 
     // Set scan open flag to FALSE
     scanOpen = FALSE;
-    curNode = NULL;
+    if (fetched)
+       ix_ihdl->DeleteNode(curNode);
+    else
+        curNode = NULL;
     curPos = -1;
     // Return OK
     return OK_RC;

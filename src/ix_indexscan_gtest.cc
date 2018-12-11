@@ -37,6 +37,7 @@ class IX_IndexScanTest : public ::testing::Test {
     }
 
     virtual void TearDown() {
+        ASSERT_EQ(OK_RC, ix_idsc.CloseScan());
         ASSERT_EQ(OK_RC, imm.CloseIndex(ix_ihdl));
         ASSERT_EQ(OK_RC, imm.DestroyIndex(fileName, 0));
     }
@@ -71,7 +72,7 @@ TEST_F(IX_IndexScanTest, Open) {
 
 TEST_F(IX_IndexScanTest, NO_OP) {
     LongInt key;
-    int cnt = 73;
+    int cnt = 100;
     for (int i = 1; i < cnt; i++) {
         ASSERT_EQ(OK_RC, insert(i, key));
     }
@@ -80,6 +81,8 @@ TEST_F(IX_IndexScanTest, NO_OP) {
     RID rid;
     for (int i = 1; i < cnt; i++) {
         ASSERT_EQ(OK_RC, ix_idsc.GetNextEntry(rid));
+        ASSERT_EQ(rid.pageNum, i);
+        ASSERT_EQ(rid.slotNum, i);
     }
     ASSERT_EQ(IX_EOF, ix_idsc.GetNextEntry(rid));
 }
