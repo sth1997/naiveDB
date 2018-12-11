@@ -70,7 +70,7 @@ RC IX_IndexHandle::CleanUp()
 
 IX_IndexHandle::~IX_IndexHandle()
 {
-    printf("~ix\n");
+    // printf("~ix\n");
     CleanUp();
 }
 

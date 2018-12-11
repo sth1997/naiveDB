@@ -135,6 +135,7 @@ private:
     BTreeNode* curNode;
     int curPos;
     bool fetched;
+    bool desc;
 };
 
 #define IX_SCAN_CLOSED          (START_IX_WARN + 0) // scan is closed

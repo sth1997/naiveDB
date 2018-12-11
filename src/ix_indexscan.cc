@@ -17,7 +17,9 @@ using namespace std;
 // Constructor
 IX_IndexScan::IX_IndexScan() {
     // Set open scan flag to false
-    scanOpen = FALSE;
+    scanOpen = false;
+    fetched = false;
+    desc = false;
 }
 
 // Destructor
@@ -94,7 +96,6 @@ RC IX_IndexScan::OpenScan(IX_IndexHandle &indexHandle, CompOp compOp,
     this->pinHint = pinHint;
 
     scanOpen = true;
-    fetched = false;
 
     // Set up current pointers based on btree
     RC rc;
@@ -105,28 +106,33 @@ RC IX_IndexScan::OpenScan(IX_IndexHandle &indexHandle, CompOp compOp,
         case LE_OP:
         case NE_OP:
             CHECK_NOZERO(ix_ihdl->FindSmallestLeaf(curNode));
+            curPos = 0;
             break;
         case EQ_OP:
             CHECK_NOZERO(ix_ihdl->FindLeaf(value, rid, curNode));
+            curPos = 0;
             break;
         case GT_OP:
         case GE_OP:
             CHECK_NOZERO(ix_ihdl->FindLargestLeaf(curNode));
+            curPos = curNode->getNum() - 1;
+            desc = true;
             break;
     }
-    curPos = 0;
     return OK_RC;
 }
 
 RC IX_IndexScan::GetNextEntry(RID &rid) {
     while (curNode != NULL) {
-        for (int i = curPos; i < curNode->getNum(); i++) {
+        for (int i = curPos; (!desc && i < curNode->getNum()) || (desc && i >= 0); (!desc && i++) || (desc && i--)) {
+            // printf("pn=%d, kn=%d, i=%d\n", curNode->getPageNum(), curNode->getNum(), i);
             char* key = curNode->getKey(i);
             bool keyMatch = false;
             switch (ix_ihdl->GetAttrType()) {
                 case INT: {
                     int keyValue = getIntegerValue(key);
                     int givenValue = *static_cast<int*>(value);
+                    // printf("%d %d %d\n", keyValue, compOp, givenValue);
                     keyMatch = matchKey(keyValue, givenValue);
                     break;
                 }
@@ -147,25 +153,27 @@ RC IX_IndexScan::GetNextEntry(RID &rid) {
                     ;
             }
             if (keyMatch) {
-                printf("find at %d\n", i);
+                // printf("find at %d\n", i);
                 rid = curNode->getRID(i);
-                curPos = i + 1;
+                curPos = desc ? i - 1 : i + 1;
                 return OK_RC;
             }
         }
-        PageNum pageNum = curNode->getNext();
+        PageNum pageNum = desc ? curNode->getPre() : curNode->getNext();
         if (fetched) {
-            printf("fetched\n");
+            // printf("fetched\n");
             ix_ihdl->DeleteNode(curNode);
         } else {
-            printf("not fetched\n");
+            // printf("not fetched\n");
             curNode = NULL;
         }
         if (pageNum != -1) {
             ix_ihdl->FetchNode(pageNum, curNode);
             fetched = true;
-            curPos = 0;
-            ix_ihdl->Pin(curNode->getPageNum());
+            if (curNode != NULL) {
+                curPos = desc ? curNode->getNum() - 1 : 0;
+                ix_ihdl->Pin(curNode->getPageNum());
+            }
         }
     }
     return IX_EOF;

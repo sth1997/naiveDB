@@ -30,7 +30,7 @@ class IX_IndexScanTest : public ::testing::Test {
     virtual void SetUp() {
         RC rc;
         int res = system("rm -f ix_test_file*");
-        rc = imm.CreateIndex(fileName, 0, INT, 4);
+        rc = imm.CreateIndex(fileName, 0, INT, 1000);
         ASSERT_EQ(OK_RC, rc);
         rc = imm.OpenIndex(fileName, 0, ix_ihdl);
         ASSERT_EQ(OK_RC, rc);
@@ -71,13 +71,47 @@ TEST_F(IX_IndexScanTest, Open) {
 
 TEST_F(IX_IndexScanTest, NO_OP) {
     LongInt key;
+    int cnt = 73;
+    for (int i = 1; i < cnt; i++) {
+        ASSERT_EQ(OK_RC, insert(i, key));
+    }
+    int a = 0;
+    ASSERT_EQ(OK_RC, ix_idsc.OpenScan(ix_ihdl, NO_OP, &a, NO_HINT));
+    RID rid;
+    for (int i = 1; i < cnt; i++) {
+        ASSERT_EQ(OK_RC, ix_idsc.GetNextEntry(rid));
+    }
+    ASSERT_EQ(IX_EOF, ix_idsc.GetNextEntry(rid));
+}
+
+/*
+TEST_F(IX_IndexScanTest, EQ_OP) {
+    LongInt key;
     ASSERT_EQ(OK_RC, insert(1, key));
     ASSERT_EQ(OK_RC, insert(2, key));
-    ASSERT_EQ(OK_RC, ix_idsc.OpenScan(ix_ihdl, NO_OP, &key, NO_HINT));
+    ASSERT_EQ(OK_RC, insert(3, key));
+    int a = 1;
+    ASSERT_EQ(OK_RC, ix_idsc.OpenScan(ix_ihdl, EQ_OP, &a, NO_HINT));
     RID rid;
-    ASSERT_EQ(OK_RC, ix_idsc.GetNextEntry(rid));
-    show(rid);
     ASSERT_EQ(OK_RC, ix_idsc.GetNextEntry(rid));
     show(rid);
     ASSERT_EQ(IX_EOF, ix_idsc.GetNextEntry(rid));
 }
+
+TEST_F(IX_IndexScanTest, GT_OP) {
+    LongInt key;
+    int cnt = 73;
+    for (int i = 1; i < cnt; i++) {
+        ASSERT_EQ(OK_RC, insert(i, key));
+    }
+    printf("%d\n", ix_ihdl.GetHeight());
+    int a = 0;
+    ASSERT_EQ(OK_RC, ix_idsc.OpenScan(ix_ihdl, NO_OP, &a, NO_HINT));
+    RID rid;
+    for (int i = 1; i < cnt; i++) {
+        printf("%d\n", i);
+        ASSERT_EQ(OK_RC, ix_idsc.GetNextEntry(rid));
+    }
+    ASSERT_EQ(IX_EOF, ix_idsc.GetNextEntry(rid));
+}
+*/
