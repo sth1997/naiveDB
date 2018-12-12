@@ -72,7 +72,7 @@ TEST_F(IX_IndexScanTest, Open) {
 
 TEST_F(IX_IndexScanTest, NO_OP) {
     LongInt key;
-    int cnt = 100;
+    int cnt = 10000;
     for (int i = 1; i < cnt; i++) {
         ASSERT_EQ(OK_RC, insert(i, key));
     }
@@ -87,34 +87,50 @@ TEST_F(IX_IndexScanTest, NO_OP) {
     ASSERT_EQ(IX_EOF, ix_idsc.GetNextEntry(rid));
 }
 
-/*
 TEST_F(IX_IndexScanTest, EQ_OP) {
     LongInt key;
-    ASSERT_EQ(OK_RC, insert(1, key));
-    ASSERT_EQ(OK_RC, insert(2, key));
-    ASSERT_EQ(OK_RC, insert(3, key));
+    int cnt = 100;
+    for (int i = 1; i < cnt; i++) {
+        ASSERT_EQ(OK_RC, insert(i, key));
+    }
     int a = 1;
     ASSERT_EQ(OK_RC, ix_idsc.OpenScan(ix_ihdl, EQ_OP, &a, NO_HINT));
     RID rid;
     ASSERT_EQ(OK_RC, ix_idsc.GetNextEntry(rid));
-    show(rid);
+    ASSERT_EQ(rid.pageNum, a);
     ASSERT_EQ(IX_EOF, ix_idsc.GetNextEntry(rid));
 }
 
-TEST_F(IX_IndexScanTest, GT_OP) {
+TEST_F(IX_IndexScanTest, LE_OP) {
     LongInt key;
-    int cnt = 73;
+    int cnt = 100;
     for (int i = 1; i < cnt; i++) {
         ASSERT_EQ(OK_RC, insert(i, key));
     }
-    printf("%d\n", ix_ihdl.GetHeight());
-    int a = 0;
-    ASSERT_EQ(OK_RC, ix_idsc.OpenScan(ix_ihdl, NO_OP, &a, NO_HINT));
+    int a = 50;
+    ASSERT_EQ(OK_RC, ix_idsc.OpenScan(ix_ihdl, LE_OP, &a, NO_HINT));
     RID rid;
-    for (int i = 1; i < cnt; i++) {
-        printf("%d\n", i);
+    for (int i = 1; i <= a; i++) {
         ASSERT_EQ(OK_RC, ix_idsc.GetNextEntry(rid));
+        ASSERT_EQ(rid.pageNum, i);
+        ASSERT_EQ(rid.slotNum, i);
     }
     ASSERT_EQ(IX_EOF, ix_idsc.GetNextEntry(rid));
 }
-*/
+
+TEST_F(IX_IndexScanTest, GE_OP) {
+    LongInt key;
+    int cnt = 100;
+    for (int i = 1; i < cnt; i++) {
+        ASSERT_EQ(OK_RC, insert(i, key));
+    }
+    int a = 50;
+    ASSERT_EQ(OK_RC, ix_idsc.OpenScan(ix_ihdl, GE_OP, &a, NO_HINT));
+    RID rid;
+    for (int i = cnt - 1; i >= a; i--) {
+        ASSERT_EQ(OK_RC, ix_idsc.GetNextEntry(rid));
+        ASSERT_EQ(rid.pageNum, i);
+        ASSERT_EQ(rid.slotNum, i);
+    }
+    ASSERT_EQ(IX_EOF, ix_idsc.GetNextEntry(rid));
+}
