@@ -1,5 +1,6 @@
 #include "sm.h"
 #include <unistd.h>
+#include <stddef.h>
 
 using namespace std;
 #define CHECK_NONZERO(x) { \
