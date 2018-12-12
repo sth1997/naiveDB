@@ -4,6 +4,13 @@
 #include "naivedb.h"
 #include <cstring>
 
+struct AttrInfo // used by parser
+{
+    char* attrName;
+    AttrType attrType;
+    int attrLength;
+};
+
 struct DataRelInfo
 {
     DataRelInfo()
@@ -51,6 +58,16 @@ struct DataAttrInfo
     DataAttrInfo(char* buf) // construct DataRelInfo from buf
     {
         memcpy(this, buf, sizeof(DataAttrInfo));
+    }
+
+    DataAttrInfo(const AttrInfo& tmp, int input_offset, int input_indexNo, const char* input_relName)
+    {
+        offset = input_offset;
+        attrType = tmp.attrType;
+        attrLength = tmp.attrLength;
+        indexNo = input_indexNo;
+        strcpy(relName, input_relName);
+        strcpy(attrName, tmp.attrName);
     }
 
     DataAttrInfo(const DataAttrInfo& tmp)
