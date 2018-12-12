@@ -8,7 +8,9 @@ pipeline {
   stages {
     stage('Build') {
       steps {
-        sh '''cd src
+        sh '''mkdir build
+mkdir lib
+cd src
 make -j4'''
       }
     }
