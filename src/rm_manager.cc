@@ -96,7 +96,8 @@ RC RM_Manager::CloseFile(RM_FileHandle& rm_fhdl) {
         }
     }
     PF_FileHandle* pf_fhdl = rm_fhdl.GetPFFileHandle();
-    pf_fhdl->ForcePages();
+    //pf_fhdl->ForcePages();
+    CHECK_NOZERO(rm_fhdl.ForcePages());
     CHECK_NOZERO(pf_mgr.CloseFile(*pf_fhdl));
     rm_fhdl.DeleteFileHandle();
 

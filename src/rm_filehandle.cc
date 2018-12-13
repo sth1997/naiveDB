@@ -82,7 +82,10 @@ RC RM_FileHandle::GetRec(const RID &rid, RM_Record &rec) const
     bool isfree;
     CHECK_NONZERO(bitmap.isFree(slotNum, isfree));
     if (isfree)
+    {
+        CHECK_NONZERO(filehandle->UnpinPage(pageNum));
         return RM_NORECINSLOT;
+    }
     char* slotPointer;
     CHECK_NONZERO(GetSlotPointer(pageHandle, slotNum, slotPointer));
     rec.SetData(slotPointer, fileheader.recordSize, rid);
@@ -144,6 +147,7 @@ RC RM_FileHandle::GetFirstFreeSlot(PageNum pageNum, SlotNum &slotNum)
     CHECK_NONZERO(pageHandle.GetData(data));
     RM_BitMap bitmap(fileheader.recordNumPerPage >> 3, data + sizeof(int) * 4);
     CHECK_NONZERO(bitmap.getFirstFree(slotNum));
+    CHECK_NONZERO(filehandle->UnpinPage(pageNum));
     return OK_RC;
 }
 
