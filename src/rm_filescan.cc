@@ -217,7 +217,7 @@ RC RM_FileScan::GetNextRec(RM_Record& rec) {
         }
 
         // printf("slot1=%d, slot2=%d\n", slotNum, rm_phdr.totalSlotsNum);
-        if (slotNum < rm_phdr.totalSlotsNum) {
+        if (slotNum + 1 < rm_phdr.totalSlotsNum) {
             slotNum++;
             CHECK_NOZERO(pf_fhdl->UnpinPage(pageNum));
         } else {
