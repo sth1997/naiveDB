@@ -176,28 +176,33 @@ RC RM_FileScan::GetNextRec(RM_Record& rec) {
             char* recData;
             rm_fhdl->GetSlotPointer(pf_phdl, slotNum, recData);
             
-            switch (attrType) {
-                case INT: {
-                    int recordValue = getIntegerValue(recData);
-                    int givenValue = *static_cast<int*>(value);
-                    recordMatch = matchRecord(recordValue, givenValue);
-                    break;
+            if (compOp != NO_OP)
+            {
+                switch (attrType) {
+                    case INT: {
+                        int recordValue = getIntegerValue(recData);
+                        int givenValue = *static_cast<int*>(value);
+                        recordMatch = matchRecord(recordValue, givenValue);
+                        break;
+                    }
+                    case FLOAT: {
+                        float recordValue = getFloatValue(recData);
+                        float givenValue = *static_cast<float*>(value);
+                        recordMatch = matchRecord(recordValue, givenValue);
+                        break;
+                    }
+                    case STRING: {
+                        string recordValue(recData + attrOffset);
+                        char* givenValueChar = static_cast<char*>(value);
+                        string givenValue(givenValueChar);
+                        recordMatch = matchRecord(recordValue, givenValue);
+                        break;
+                    }
+                    default:;
                 }
-                case FLOAT: {
-                    float recordValue = getFloatValue(recData);
-                    float givenValue = *static_cast<float*>(value);
-                    recordMatch = matchRecord(recordValue, givenValue);
-                    break;
-                }
-                case STRING: {
-                    string recordValue(recData + attrOffset);
-                    char* givenValueChar = static_cast<char*>(value);
-                    string givenValue(givenValueChar);
-                    recordMatch = matchRecord(recordValue, givenValue);
-                    break;
-                }
-                default:;
             }
+            else
+                recordMatch = true;
 
             if (recordMatch) {
                 // printf("record matched!\n");
