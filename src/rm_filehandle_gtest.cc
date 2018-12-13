@@ -28,7 +28,10 @@ class RM_FileHandleTest : public ::testing::Test {
         ASSERT_EQ(OK_RC, rc);
     }
 
-    virtual void TearDown() { ASSERT_EQ(OK_RC, rmm.DestroyFile(fileName)); }
+    virtual void TearDown() {
+        ASSERT_EQ(OK_RC, rmm.CloseFile(rm_fhdl));
+        ASSERT_EQ(OK_RC, rmm.DestroyFile(fileName));
+    }
 
     // Declares the variables your tests want to use.
     PF_Manager pfm;
@@ -85,5 +88,6 @@ TEST_F(RM_FileHandleTest, FreeSlot) {
     bool isFree;
     bitmap.isFree(slotNum, isFree);
     ASSERT_EQ(isFree, false);
+    pf_fhdl->UnpinPage(pageNum);
     // printf("pn=%d,sn=%d\n", pageNum, slotNum);
 }

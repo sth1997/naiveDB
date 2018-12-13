@@ -176,28 +176,33 @@ RC RM_FileScan::GetNextRec(RM_Record& rec) {
             char* recData;
             rm_fhdl->GetSlotPointer(pf_phdl, slotNum, recData);
             
-            switch (attrType) {
-                case INT: {
-                    int recordValue = getIntegerValue(recData);
-                    int givenValue = *static_cast<int*>(value);
-                    recordMatch = matchRecord(recordValue, givenValue);
-                    break;
+            if (compOp != NO_OP)
+            {
+                switch (attrType) {
+                    case INT: {
+                        int recordValue = getIntegerValue(recData);
+                        int givenValue = *static_cast<int*>(value);
+                        recordMatch = matchRecord(recordValue, givenValue);
+                        break;
+                    }
+                    case FLOAT: {
+                        float recordValue = getFloatValue(recData);
+                        float givenValue = *static_cast<float*>(value);
+                        recordMatch = matchRecord(recordValue, givenValue);
+                        break;
+                    }
+                    case STRING: {
+                        string recordValue(recData + attrOffset);
+                        char* givenValueChar = static_cast<char*>(value);
+                        string givenValue(givenValueChar);
+                        recordMatch = matchRecord(recordValue, givenValue);
+                        break;
+                    }
+                    default:;
                 }
-                case FLOAT: {
-                    float recordValue = getFloatValue(recData);
-                    float givenValue = *static_cast<float*>(value);
-                    recordMatch = matchRecord(recordValue, givenValue);
-                    break;
-                }
-                case STRING: {
-                    string recordValue(recData + attrOffset);
-                    char* givenValueChar = static_cast<char*>(value);
-                    string givenValue(givenValueChar);
-                    recordMatch = matchRecord(recordValue, givenValue);
-                    break;
-                }
-                default:;
             }
+            else
+                recordMatch = true;
 
             if (recordMatch) {
                 // printf("record matched!\n");
@@ -212,11 +217,13 @@ RC RM_FileScan::GetNextRec(RM_Record& rec) {
         }
 
         // printf("slot1=%d, slot2=%d\n", slotNum, rm_phdr.totalSlotsNum);
-        if (slotNum < rm_phdr.totalSlotsNum) {
+        if (slotNum + 1 < rm_phdr.totalSlotsNum) {
             slotNum++;
+            CHECK_NOZERO(pf_fhdl->UnpinPage(pageNum));
         } else {
             CHECK_NOZERO(pf_fhdl->UnpinPage(pageNum));
             if ((rc = pf_fhdl->GetNextPage(pageNum, pf_phdl))) {
+                
                 if (rc == PF_EOF) {
                     pageNum = RM_NO_FREE_PAGE;
                     if (recordMatch) {
@@ -232,11 +239,9 @@ RC RM_FileScan::GetNextRec(RM_Record& rec) {
                 }
             }
             CHECK_NOZERO(pf_phdl.GetPageNum(pageNum));
+            CHECK_NOZERO(pf_fhdl->UnpinPage(pageNum)); // unpin for GetNextPage
             slotNum = 0;
         }
-    }
-    if (pinHint == NO_HINT) {
-        CHECK_NOZERO(pf_fhdl->UnpinPage(pageNum));
     }
 
     return OK_RC;

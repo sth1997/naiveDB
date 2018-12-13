@@ -1,6 +1,9 @@
 #include "sm.h"
 #include <unistd.h>
 #include <stddef.h>
+#include <dirent.h>
+#include <set>
+#include <vector>
 
 using namespace std;
 #define CHECK_NONZERO(x) { \
@@ -30,7 +33,7 @@ SM_Manager::~SM_Manager()
     //TODO: handle open db
 }
 
-RC SM_Manager::ValidName(const char* name)
+RC SM_Manager::ValidName(const char* name) const
 {
     if (name == NULL)
         return SM_NULLDBNAME;
@@ -46,12 +49,8 @@ RC SM_Manager::CreateDb(const char* dbName)
     if (DBOpen)
         return SM_DBALREADYOPEN;
 
-    if (chdir(dbName) == 0)
-    {
-        if (chdir("../"))
-            return SM_CHDIRERROR;
+    if (access(dbName, F_OK) == 0)
         return SM_DBEXISTS;
-    }
 
     char command[128];
     sprintf(command, "mkdir %s", dbName);
@@ -149,7 +148,7 @@ RC SM_Manager::CreateDb(const char* dbName)
     attr.offset = offsetof(DataAttrInfo, relName);
     CHECK_NONZERO(attrcat.InsertRec((char*) &attr, rid));
 
-    strcpy(attr.relName, "relcat");
+    strcpy(attr.relName, "attrcat");
     strcpy(attr.attrName, "attrName");
     attr.attrLength = MAXNAME + 1;
     attr.attrType = STRING;
@@ -221,15 +220,204 @@ RC SM_Manager::CloseDb()
     return OK_RC;
 }
 
+// Find the relation named relName in relcat.
+// If not found, set found = false
+RC SM_Manager::FindRel(const char* relName, DataRelInfo& rel, RID& rid, bool& found)
+{
+    found = false;
+    RC rc;
+    CHECK_NONZERO(ValidName(relName));
+    if (!DBOpen)
+        return SM_DBNOTOPEN;
+    
+    RM_FileScan scan;
+    CHECK_NONZERO(scan.OpenScan(relcat, STRING, MAXNAME + 1, offsetof(DataRelInfo, relName), EQ_OP, (void*) relName));
+
+    RM_Record record;
+    rc = scan.GetNextRec(record);
+    if (rc == RM_EOF) // not found
+        return OK_RC;
+    if(rc)  // error
+        return rc;
+    
+    CHECK_NONZERO(scan.CloseScan());
+    found = true;
+    DataRelInfo* relpointer;
+    CHECK_NONZERO(record.GetData((char*&) relpointer));
+    rel = *relpointer;
+    CHECK_NONZERO(record.GetRid(rid));
+    return OK_RC;
+}
+
+// Find the attribute named attrName which belongs to the relation named relName
+// If not found, set found = false
+RC SM_Manager::FindAttr(const char* relName, const char* attrName, DataAttrInfo& attrinfo, RID& rid, bool& found)
+{
+    found = false;
+    RC rc;
+    CHECK_NONZERO(ValidName(relName));
+    CHECK_NONZERO(ValidName(attrName));
+    if (!DBOpen)
+        return SM_DBNOTOPEN;
+
+    RM_FileScan scan;
+    CHECK_NONZERO(scan.OpenScan(attrcat, STRING, MAXNAME + 1, offsetof(DataAttrInfo, attrName), EQ_OP, (void*) attrName));
+
+    RM_Record record;
+    rc = scan.GetNextRec(record);
+    while (rc != RM_EOF)
+    {
+        if (rc) // error
+            return rc;
+        DataAttrInfo* attrpointer;
+        CHECK_NONZERO(record.GetData((char*&) attrpointer));
+        if (strcmp(attrpointer->relName, relName) == 0)
+        {
+            found = true;
+            attrinfo = *attrpointer;
+            CHECK_NONZERO(record.GetRid(rid));
+            break;
+        }
+        rc = scan.GetNextRec(record);
+    }
+    CHECK_NONZERO(scan.CloseScan());
+    return OK_RC; // whatever found or not
+}
+
+// Find all attributes belong to relation named relName
+RC SM_Manager::FindAllAttrs(const char* relName, vector<DataAttrInfo>& attrs)
+{
+    RC rc;
+    CHECK_NONZERO(ValidName(relName));
+    if (!DBOpen)
+        return SM_DBNOTOPEN;
+    // check wether the table already exists
+    bool foundRel = false;
+    DataRelInfo tmp_relinfo;
+    RID tmp_rid;
+    CHECK_NONZERO(FindRel(relName, tmp_relinfo, tmp_rid, foundRel));
+    if (!foundRel)
+        return SM_NOSUCHTABLE;
+    
+    attrs.clear();
+    RM_FileScan scan;
+    CHECK_NONZERO(scan.OpenScan(attrcat, STRING, MAXNAME + 1, offsetof(DataAttrInfo, relName), EQ_OP, (void*) relName));
+    RM_Record record;
+    rc = scan.GetNextRec(record);
+    while (rc != RM_EOF)
+    {
+        if (rc)
+            return rc;
+        DataAttrInfo* attrinfo;
+        CHECK_NONZERO(record.GetData((char*&) attrinfo));
+        attrs.push_back(*attrinfo);
+        rc = scan.GetNextRec(record);
+    }
+    scan.CloseScan();
+    if (attrs.size() != tmp_relinfo.attrCount)
+        return SM_ATTRNUMINCORRECT;
+    return OK_RC;
+}
+
 RC SM_Manager::CreateTable(const char* relName, int attrCount, AttrInfo* attributes)
 {
     RC rc;
     CHECK_NONZERO(ValidName(relName));
     if (!DBOpen)
         return SM_DBNOTOPEN;
-    // TOCO
+    if (attrCount <= 0 || attributes == NULL)
+        return SM_BADTABLEPARA;
+    if (strcmp(relName, "attrcat") == 0 || strcmp(relName, "relcat") == 0)
+        return SM_BADTABLEPARA;
 
+    // check wether the table already exists
+    bool foundRel = false;
+    DataRelInfo tmp_relinfo;
+    RID tmp_rid;
+    CHECK_NONZERO(FindRel(relName, tmp_relinfo, tmp_rid, foundRel));
+    if (foundRel)
+        return SM_BADTABLEPARA;
+    
+    RID rid;
+    set<string> attrNames; // used to check whether there are two attributes with the same name
+    attrNames.clear();
+    DataAttrInfo* attrinfo = new DataAttrInfo[attrCount];
+    int totalLength = 0;
+    for (int i = 0; i < attrCount; ++i)
+    {
+        if (attributes[i].attrType == INT || attributes[i].attrType == FLOAT)
+        {
+            if (attributes[i].attrLength != 4)
+                return SM_BADTABLEPARA;
+        }
+        else if (attributes[i].attrType == STRING)
+        {
+            if (attributes[i].attrLength < 1 || attributes[i].attrLength > MAXSTRINGLEN)
+                return SM_BADTABLEPARA;
+        }
+        else
+            return SM_BADTABLEPARA;
+        attrinfo[i] = DataAttrInfo(attributes[i], totalLength, -1, relName);
+        totalLength += attrinfo[i].attrLength;
+        if (attrNames.find(string(attrinfo[i].attrName)) == attrNames.end())
+            attrNames.insert(string(attrinfo[i].attrName));
+        else // there are two attributes with the same name
+        {
+            delete []attrinfo;
+            return SM_BADTABLEPARA;
+        }
+    }
 
+    for (int i = 0; i < attrCount; ++i)
+        CHECK_NONZERO((attrcat.InsertRec((char*) &attrinfo[i], rid)));
+    delete []attrinfo;
+
+    CHECK_NONZERO(rmm.CreateFile(relName, totalLength));
+    DataRelInfo relinfo;
+    relinfo.attrCount = attrCount;
+    relinfo.recordSize = totalLength;
+    strcpy(relinfo.relName, relName);
+    CHECK_NONZERO(relcat.InsertRec((char*) &relinfo, rid));
+    return OK_RC;
+}
+
+RC SM_Manager::DropTable(const char* relName)
+{
+    RC rc;
+    CHECK_NONZERO(ValidName(relName));
+    if (!DBOpen)
+        return SM_DBNOTOPEN;
+    if (strcmp(relName, "attrcat") == 0 || strcmp(relName, "relcat") == 0)
+        return SM_BADTABLEPARA;
+    
+    
+    DataRelInfo relinfo;
+    bool found = false;
+    RID rid;
+    CHECK_NONZERO(FindRel(relName, relinfo, rid, found));
+    if (!found)
+        return SM_NOSUCHTABLE;
+    CHECK_NONZERO(rmm.DestroyFile(relName));
+    CHECK_NONZERO(relcat.DeleteRec(rid));
+    
+    RM_FileScan scan;
+    RM_Record record;
+    DataAttrInfo* attrinfo;
+    CHECK_NONZERO(scan.OpenScan(attrcat, STRING, MAXNAME + 1, offsetof(DataAttrInfo, relName), EQ_OP, (void*) relName));
+    rc = scan.GetNextRec(record);
+    while (rc != RM_EOF)
+    {
+        if (rc)
+            return rc;
+        CHECK_NONZERO(record.GetData((char*&) attrinfo));
+        assert(strcmp(attrinfo->relName, relName) == 0);
+        if (attrinfo->indexNo != -1)
+            CHECK_NONZERO(ixm.DestroyIndex(relName, attrinfo->offset));
+        record.GetRid(rid);
+        CHECK_NONZERO(attrcat.DeleteRec(rid));
+        rc = scan.GetNextRec(record);
+    }
+    CHECK_NONZERO(scan.CloseScan());
     return OK_RC;
 }
 
@@ -240,8 +428,198 @@ RC SM_Manager::CreateIndex(const char* relName, const char* attrName)
     CHECK_NONZERO(ValidName(attrName));
     if (!DBOpen)
         return SM_DBNOTOPEN;
-    // TODO
+    
+    DataAttrInfo attrinfo;
+    RID rid;
+    bool found = false;
+    CHECK_NONZERO(FindAttr(relName, attrName, attrinfo, rid, found));
+    if (!found)
+        return SM_NOSUCHATTR;
+    if (attrinfo.indexNo != -1)
+        return SM_INDEXEXISTS;
 
+    CHECK_NONZERO(ixm.CreateIndex(relName, attrinfo.offset, attrinfo.attrType, attrinfo.attrLength));
+    attrinfo.indexNo = attrinfo.offset;
+    //update attrcat
+    RM_Record record;
+    record.SetData((char*) &attrinfo, sizeof(DataAttrInfo), rid);
+    CHECK_NONZERO(attrcat.UpdateRec(record));
 
+    // insert all records into the new index
+    IX_IndexHandle indexHandle;
+    CHECK_NONZERO(ixm.OpenIndex(relName, attrinfo.indexNo, indexHandle));
+    RM_FileHandle fileHandle;
+    CHECK_NONZERO(rmm.OpenFile(relName, fileHandle));
+    RM_FileScan scan;
+    CHECK_NONZERO(scan.OpenScan(fileHandle, attrinfo.attrType, attrinfo.attrLength, attrinfo.offset, NO_OP, NULL));
+
+    rc = scan.GetNextRec(record);
+    while (rc != RM_EOF)
+    {
+        if (rc) // error
+            return rc;
+        char* data;
+        CHECK_NONZERO(record.GetData(data));
+        CHECK_NONZERO(record.GetRid(rid));
+        indexHandle.InsertEntry(data + attrinfo.offset, rid);
+        rc = scan.GetNextRec(record);
+    }
+
+    CHECK_NONZERO(scan.CloseScan());
+    CHECK_NONZERO(rmm.CloseFile(fileHandle));
+    CHECK_NONZERO(ixm.CloseIndex(indexHandle));
+    return OK_RC;
+}
+
+RC SM_Manager::DropIndex(const char* relName, const char* attrName)
+{
+    RC rc;
+    CHECK_NONZERO(ValidName(relName));
+    CHECK_NONZERO(ValidName(attrName));
+    if (!DBOpen)
+        return SM_DBNOTOPEN;
+
+    DataAttrInfo attrinfo;
+    RID rid;
+    bool found = false;
+    CHECK_NONZERO(FindAttr(relName, attrName, attrinfo, rid, found));
+    if (!found)
+        return SM_NOSUCHATTR;
+    if (attrinfo.indexNo == -1)
+        return SM_NOSUCHINDEX;
+
+    CHECK_NONZERO(ixm.DestroyIndex(relName, attrinfo.indexNo));
+    //update attrcat
+    attrinfo.indexNo = -1;
+    RM_Record record;
+    record.SetData((char*) &attrinfo, sizeof(DataAttrInfo), rid);
+    CHECK_NONZERO(attrcat.UpdateRec(record));
+    return OK_RC;
+}
+
+// Print all dbs and elations in each of them. For relations, only print the relName.
+RC SM_Manager::PrintDBs()
+{
+    if (DBOpen)
+        return SM_DBALREADYOPEN;
+    DIR *dir;
+    struct dirent *ptr;
+    //char base[1000];
+    vector<string> dbNames;
+
+    if ((dir=opendir("./")) == NULL)
+        return SM_OPENDIRERROR;
+    while ((ptr=readdir(dir)) != NULL)
+    {
+        if(strcmp(ptr->d_name,".")==0 || strcmp(ptr->d_name,"..")==0)    ///current dir OR parrent dir
+            continue;
+        /*else if(ptr->d_type == 8)    ///file
+            printf("d_name:%s/%s\n",basePath,ptr->d_name);
+        else if(ptr->d_type == 10)    ///link file
+            printf("link_file:%s/%s\n",basePath,ptr->d_name);
+        else */
+        if(ptr->d_type == 4)    ///dir
+        {
+            dbNames.push_back(string(ptr->d_name));
+            /*memset(base,'\0',sizeof(base));
+            strcpy(base,basePath);
+            strcat(base,"/");
+            strcat(base,ptr->d_name);
+            readFileList(base);*/
+        }
+    }
+    closedir(dir);
+
+    RM_FileScan scan;
+    RC rc;
+    for (auto dbName : dbNames)
+    {
+        printf("-----------------------------------------------------------\n");
+        printf("DB NAME: %s\n", dbName.c_str());
+        printf("TABLES:\n");
+        CHECK_NONZERO(OpenDb(dbName.c_str()));
+        CHECK_NONZERO(scan.OpenScan(relcat, STRING, MAXNAME + 1, offsetof(DataRelInfo, relName), NO_OP, NULL));
+        RM_Record record;
+        rc = scan.GetNextRec(record);
+        DataRelInfo* relinfo;
+        while (rc != RM_EOF)
+        {
+            if (rc) // error
+                return rc;
+            CHECK_NONZERO(record.GetData((char*&) relinfo));
+            printf("          %s\n", relinfo->relName);
+            rc = scan.GetNextRec(record);
+        }
+        scan.CloseScan();
+        CHECK_NONZERO(CloseDb());
+    }
+    return OK_RC;
+}
+
+// Print all tables in this db and attributes in each table.
+RC SM_Manager::PrintTables()
+{
+    if (!DBOpen)
+        return SM_DBNOTOPEN;
+    RM_FileScan scan;
+    RC rc;
+    CHECK_NONZERO(scan.OpenScan(relcat, STRING, MAXNAME + 1, offsetof(DataRelInfo, relName), NO_OP, NULL));
+    RM_Record record;
+    rc = scan.GetNextRec(record);
+    DataRelInfo* relinfo;
+    while (rc != RM_EOF)
+    {
+        if (rc) // error
+            return rc;
+        CHECK_NONZERO(record.GetData((char*&) relinfo));
+        printf("-------------------------------------------------------------\n");
+        CHECK_NONZERO(PrintTable(relinfo->relName));
+        rc = scan.GetNextRec(record);
+    }
+    CHECK_NONZERO(scan.CloseScan());
+    return OK_RC;
+}
+
+void SM_Manager::PrintAttrType(AttrType attrType)
+{
+    if (attrType == INT)
+        printf("INT");
+    else if (attrType == FLOAT)
+        printf("FLOAT");
+    else if (attrType == STRING)
+        printf("STRING");
+    else
+        assert(1);
+}
+
+// Print all attributes in table named relName
+RC SM_Manager::PrintTable(const char* relName)
+{
+    RC rc;
+    CHECK_NONZERO(ValidName(relName));
+    if (!DBOpen)
+        return SM_DBNOTOPEN;
+    
+    bool foundRel = false;
+    DataRelInfo tmp_relinfo;
+    RID tmp_rid;
+    CHECK_NONZERO(FindRel(relName, tmp_relinfo, tmp_rid, foundRel));
+    if (!foundRel)
+        return SM_NOSUCHTABLE;
+    
+    printf("TABLE NAME: %s\n", relName);
+
+    vector<DataAttrInfo> attrs;
+    CHECK_NONZERO(FindAllAttrs(relName, attrs));
+    for (auto attr : attrs)
+    {
+        printf("       %s         ", attr.attrName);
+        PrintAttrType(attr.attrType);
+        printf("(%d)", attr.attrLength);
+        if (attr.indexNo == -1)
+            printf("         NOT INDEXED\n");
+        else
+            printf("         INDEXED\n");
+    }
     return OK_RC;
 }
