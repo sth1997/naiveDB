@@ -28,7 +28,11 @@ class RM_FileScanTest : public ::testing::Test {
         
     }
 
-    virtual void TearDown() { rmm.DestroyFile(fileName); }
+    virtual void TearDown() {
+        rm_fscan.CloseScan();
+        rmm.CloseFile(rm_fhdl);
+        rmm.DestroyFile(fileName);
+    }
 
     // Declares the variables your tests want to use.
     PF_Manager pfm;

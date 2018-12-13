@@ -219,9 +219,11 @@ RC RM_FileScan::GetNextRec(RM_Record& rec) {
         // printf("slot1=%d, slot2=%d\n", slotNum, rm_phdr.totalSlotsNum);
         if (slotNum < rm_phdr.totalSlotsNum) {
             slotNum++;
+            CHECK_NOZERO(pf_fhdl->UnpinPage(pageNum));
         } else {
             CHECK_NOZERO(pf_fhdl->UnpinPage(pageNum));
             if ((rc = pf_fhdl->GetNextPage(pageNum, pf_phdl))) {
+                
                 if (rc == PF_EOF) {
                     pageNum = RM_NO_FREE_PAGE;
                     if (recordMatch) {
@@ -237,11 +239,9 @@ RC RM_FileScan::GetNextRec(RM_Record& rec) {
                 }
             }
             CHECK_NOZERO(pf_phdl.GetPageNum(pageNum));
+            CHECK_NOZERO(pf_fhdl->UnpinPage(pageNum)); // unpin for GetNextPage
             slotNum = 0;
         }
-    }
-    if (pinHint == NO_HINT) {
-        CHECK_NOZERO(pf_fhdl->UnpinPage(pageNum));
     }
 
     return OK_RC;
