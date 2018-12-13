@@ -16,7 +16,8 @@ make -j4'''
     }
     stage('Test') {
       steps {
-        sh './src/gtest'
+        sh '''cd src
+./gtest'''
       }
     }
   }
