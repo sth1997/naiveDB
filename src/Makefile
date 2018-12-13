@@ -42,7 +42,7 @@ IX_SOURCES     = ix_manager.cc ix_indexscan.cc ix_error.cc \
 				 ix_indexhandle.cc btreenode.cc ix_manager_gtest.cc \
 				 ix_indexhandle_gtest.cc ix_indexscan_gtest.cc
 
-SM_SOURCES     = sm_manager.cc #sm_stub.cc printer.cc
+SM_SOURCES     = sm_manager.cc sm_manager_gtest.cc #sm_stub.cc printer.cc
 QL_SOURCES     = #ql_manager_stub.cc
 UTILS_SOURCES  = #naivedb.cc dbcreate.cc dbdestroy.cc
 PARSER_SOURCES = #scan.c parse.c nodes.c interp.c

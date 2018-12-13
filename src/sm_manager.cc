@@ -147,7 +147,7 @@ RC SM_Manager::CreateDb(const char* dbName)
     attr.offset = offsetof(DataAttrInfo, relName);
     CHECK_NONZERO(attrcat.InsertRec((char*) &attr, rid));
 
-    strcpy(attr.relName, "relcat");
+    strcpy(attr.relName, "attrcat");
     strcpy(attr.attrName, "attrName");
     attr.attrLength = MAXNAME + 1;
     attr.attrType = STRING;
@@ -485,7 +485,7 @@ RC SM_Manager::DropIndex(const char* relName, const char* attrName)
     if (!found)
         return SM_NOSUCHATTR;
     if (attrinfo.indexNo == -1)
-        return SM_INDEXEXISTS;
+        return SM_NOSUCHINDEX;
 
     CHECK_NONZERO(ixm.DestroyIndex(relName, attrinfo.indexNo));
     //update attrcat
@@ -533,7 +533,7 @@ RC SM_Manager::PrintDBs()
     RC rc;
     for (auto dbName : dbNames)
     {
-        printf("-----------------------------------------------");
+        printf("-----------------------------------------------------------\n");
         printf("DB NAME: %s\n", dbName.c_str());
         printf("TABLES:\n");
         CHECK_NONZERO(OpenDb(dbName.c_str()));
@@ -546,7 +546,7 @@ RC SM_Manager::PrintDBs()
             if (rc) // error
                 return rc;
             CHECK_NONZERO(record.GetData((char*&) relinfo));
-            printf("          %s", relinfo->relName);
+            printf("          %s\n", relinfo->relName);
             rc = scan.GetNextRec(record);
         }
         scan.CloseScan();
@@ -571,15 +571,27 @@ RC SM_Manager::PrintTables()
         if (rc) // error
             return rc;
         CHECK_NONZERO(record.GetData((char*&) relinfo));
-        printf("-------------------------------------------------------------");
-        PrintTable(relinfo->relName);
+        printf("-------------------------------------------------------------\n");
+        CHECK_NONZERO(PrintTable(relinfo->relName));
         rc = scan.GetNextRec(record);
     }
-    scan.CloseScan();
-    CHECK_NONZERO(CloseDb());
+    CHECK_NONZERO(scan.CloseScan());
+    return OK_RC;
 }
 
-// Print all attributes in table relName
+void SM_Manager::PrintAttrType(AttrType attrType)
+{
+    if (attrType == INT)
+        printf("INT");
+    else if (attrType == FLOAT)
+        printf("FLOAT");
+    else if (attrType == STRING)
+        printf("STRING");
+    else
+        assert(1);
+}
+
+// Print all attributes in table named relName
 RC SM_Manager::PrintTable(const char* relName)
 {
     RC rc;
@@ -587,4 +599,26 @@ RC SM_Manager::PrintTable(const char* relName)
     if (!DBOpen)
         return SM_DBNOTOPEN;
     
+    bool foundRel = false;
+    DataRelInfo tmp_relinfo;
+    RID tmp_rid;
+    CHECK_NONZERO(FindRel(relName, tmp_relinfo, tmp_rid, foundRel));
+    if (!foundRel)
+        return SM_NOSUCHTABLE;
+    
+    printf("TABLE NAME: %s\n", relName);
+
+    vector<DataAttrInfo> attrs;
+    CHECK_NONZERO(FindAllAttrs(relName, attrs));
+    for (auto attr : attrs)
+    {
+        printf("       %s         ", attr.attrName);
+        PrintAttrType(attr.attrType);
+        printf("(%d)", attr.attrLength);
+        if (attr.indexNo == -1)
+            printf("         NOT INDEXED\n");
+        else
+            printf("         INDEXED\n");
+    }
+    return OK_RC;
 }

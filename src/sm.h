@@ -28,6 +28,7 @@ private:
     RC FindRel(const char* relName, DataRelInfo& rel, RID& rid, bool& found);
     RC FindAttr(const char* relName, const char* attrName, DataAttrInfo& attrinfo, RID& rid, bool& found);
     RC ValidName(const char* name) const;
+    void PrintAttrType(AttrType AttrType);
     RM_Manager& rmm;
     IX_Manager& ixm;
     RM_FileHandle attrcat; // catalog for attributes
