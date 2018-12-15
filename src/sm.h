@@ -5,6 +5,7 @@
 #include "rm.h"
 #include "ix.h"
 #include "catalog.h"
+#include "parser.h"
 #include <vector>
 
 class SM_Manager
@@ -29,11 +30,12 @@ public:
     RC CheckCond(const Condition& cond, bool& found);
     RC FindRelForAttr(RelAttr& attr, int numRel, const char* const possibleRels[]);
     RC IsAttrIndexed(const char* relName, const char* attrName, bool& indexed);
-private:
+    RC DBOpened() { return DBOpen; }
     RC FindRel(const char* relName, DataRelInfo& rel, RID& rid, bool& found);
     RC FindAttr(const char* relName, const char* attrName, DataAttrInfo& attrinfo, RID& rid, bool& found);
     RC ValidName(const char* name) const;
     void PrintAttrType(AttrType AttrType);
+private:
     RM_Manager& rmm;
     IX_Manager& ixm;
     RM_FileHandle attrcat; // catalog for attributes

@@ -2,40 +2,8 @@
 #define CATALOG_H
 
 #include "naivedb.h"
+#include "parser.h"
 #include <cstring>
-
-struct AttrInfo // used by parser
-{
-    char* attrName;
-    AttrType attrType;
-    int attrLength;
-};
-
-struct RelAttr{
-    char     *relName;    // Relation name (may be NULL)
-    char     *attrName;   // Attribute name
-
-    // Print function
-    friend std::ostream &operator<<(std::ostream &s, const RelAttr &ra);
-};
-
-struct Value{
-    AttrType type;         /* type of value               */
-    void     *data;        /* value                       */
-			   /* print function              */
-    friend std::ostream &operator<<(std::ostream &s, const Value &v);
-};
-
-struct Condition{
-    RelAttr  lhsAttr;    /* left-hand side attribute            */
-    CompOp   op;         /* comparison operator                 */
-    int      bRhsIsAttr; /* TRUE if the rhs is an attribute,    */
-                         /* in which case rhsAttr below is valid;*/
-                         /* otherwise, rhsValue below is valid.  */
-    RelAttr  rhsAttr;    /* right-hand side attribute            */
-    Value    rhsValue;   /* right-hand side value                */
-			 /* print function                               */
-};
 
 struct DataRelInfo
 {

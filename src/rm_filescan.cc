@@ -167,6 +167,7 @@ RC RM_FileScan::GetNextRec(RM_Record& rec) {
         // get bitmap
         RM_PageHeader rm_phdr;
         PF_PageHandle pf_phdl;
+        // TODO: move getthispage outside the loop
         CHECK_NOZERO(pf_fhdl->GetThisPage(pageNum, pf_phdl));
         rm_fhdl->GetPageHeader(pf_phdl, rm_phdr);
         RM_BitMap bitmap(rm_phdr.freeSlotsNum, rm_phdr.freeSlots);

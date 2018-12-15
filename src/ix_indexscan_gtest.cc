@@ -63,6 +63,7 @@ class IX_IndexScanTest : public ::testing::Test {
     IX_IndexHandle ix_ihdl;
     IX_IndexScan ix_idsc;
     const char* fileName = "ix_test_file";
+    const int cnt = 100;
 };
 
 TEST_F(IX_IndexScanTest, Open) {
@@ -72,7 +73,6 @@ TEST_F(IX_IndexScanTest, Open) {
 
 TEST_F(IX_IndexScanTest, NO_OP) {
     LongInt key;
-    int cnt = 10000;
     for (int i = 1; i < cnt; i++) {
         ASSERT_EQ(OK_RC, insert(i, key));
     }
@@ -89,7 +89,6 @@ TEST_F(IX_IndexScanTest, NO_OP) {
 
 TEST_F(IX_IndexScanTest, EQ_OP) {
     LongInt key;
-    int cnt = 10000;
     for (int i = 1; i < cnt; i++) {
         ASSERT_EQ(OK_RC, insert(i, key));
     }
@@ -103,7 +102,6 @@ TEST_F(IX_IndexScanTest, EQ_OP) {
 
 TEST_F(IX_IndexScanTest, LE_OP) {
     LongInt key;
-    int cnt = 10000;
     for (int i = 1; i < cnt; i++) {
         ASSERT_EQ(OK_RC, insert(i, key));
     }
@@ -120,7 +118,6 @@ TEST_F(IX_IndexScanTest, LE_OP) {
 
 TEST_F(IX_IndexScanTest, GE_OP) {
     LongInt key;
-    int cnt = 10000;
     for (int i = 1; i < cnt; i++) {
         ASSERT_EQ(OK_RC, insert(i, key));
     }
