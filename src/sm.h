@@ -24,6 +24,9 @@ public:
     RC PrintTables();
     RC PrintTable(const char* relName);
     RC FindAllAttrs(const char* relName, std::vector<DataAttrInfo>& attrs);
+    RC CheckRel(const char* relName, bool& found);
+    RC CheckAttr(const char* relName, const char* attrName, bool& found);
+    RC CheckCond(const Condition& cond, bool& found);
 private:
     RC FindRel(const char* relName, DataRelInfo& rel, RID& rid, bool& found);
     RC FindAttr(const char* relName, const char* attrName, DataAttrInfo& attrinfo, RID& rid, bool& found);
@@ -51,9 +54,11 @@ private:
 #define SM_INDEXEXISTS        (START_SM_WARN + 11) // index already exists
 #define SM_NOSUCHINDEX        (START_SM_WARN + 12) // no such index
 #define SM_OPENDIRERROR       (START_SM_WARN + 13) // get error when opening dir
+#define SM_TYPEMISMATCH       (START_SM_WARN + 14) // the types of two attr mismatch
 
 #define SM_GETCWDERROR        (START_SM_ERR - 0) // get error when calling getcwd
 #define SM_CHDIRERROR         (START_SM_ERR - 1) // get error when calling chdir
 #define SM_ATTRNUMINCORRECT   (START_SM_ERR - 2) // the number of attributes is incorrect
+#define SM_INVALIDCOMPOP      (START_SM_ERR - 3) // invalid comp op
 
 #endif // SM_H

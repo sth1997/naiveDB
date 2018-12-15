@@ -286,12 +286,12 @@ RC SM_Manager::FindAttr(const char* relName, const char* attrName, DataAttrInfo&
 // Find all attributes belong to relation named relName
 RC SM_Manager::FindAllAttrs(const char* relName, vector<DataAttrInfo>& attrs)
 {
+    bool foundRel = false;
     RC rc;
     CHECK_NONZERO(ValidName(relName));
     if (!DBOpen)
         return SM_DBNOTOPEN;
     // check wether the table already exists
-    bool foundRel = false;
     DataRelInfo tmp_relinfo;
     RID tmp_rid;
     CHECK_NONZERO(FindRel(relName, tmp_relinfo, tmp_rid, foundRel));
@@ -316,6 +316,78 @@ RC SM_Manager::FindAllAttrs(const char* relName, vector<DataAttrInfo>& attrs)
     if (attrs.size() != tmp_relinfo.attrCount)
         return SM_ATTRNUMINCORRECT;
     return OK_RC;
+}
+
+//check whether the relation named relName exists
+RC SM_Manager::CheckRel(const char* relName, bool& found)
+{
+    found = false;
+    RC rc;
+    CHECK_NONZERO(ValidName(relName));
+    if (!DBOpen)
+        return SM_DBNOTOPEN;
+    DataRelInfo relInfo;
+    RID rid;
+    CHECK_NONZERO(FindRel(relName, relInfo, rid, found));
+    return OK_RC;
+}
+
+//check whether the relation named relName and the attribute named attrName exist
+RC SM_Manager::CheckAttr(const char* relName, const char* attrName, bool& found)
+{
+    found = false;
+    RC rc;
+    CHECK_NONZERO(ValidName(relName));
+    CHECK_NONZERO(ValidName(attrName));
+    if (!DBOpen)
+        return SM_DBNOTOPEN;
+    DataAttrInfo attrInfo;
+    RID rid;
+    CHECK_NONZERO(FindAttr(relName, attrName, attrInfo, rid, found));
+    return OK_RC;
+}
+
+//check whether the relation or attribute of the left hand side or right hand side exists
+// If they all exist, but the types of them mismatched, the "found" is also set false.
+RC SM_Manager::CheckCond(const Condition& cond, bool& found)
+{
+    found = false;
+    if (cond.op < NO_OP || cond.op > GE_OP)
+        return SM_INVALIDCOMPOP;
+    RC rc;
+    CHECK_NONZERO(ValidName(cond.lhsAttr.relName));
+    CHECK_NONZERO(ValidName(cond.lhsAttr.attrName));
+    DataAttrInfo attrInfo1;
+    RID rid;
+    CHECK_NONZERO(FindAttr(cond.lhsAttr.relName, cond.lhsAttr.attrName, attrInfo1, rid, found));
+    if (!found) // not found
+        return OK_RC;
+    found = false;
+
+    if (cond.bRhsIsAttr)
+    {
+        DataAttrInfo attrInfo2;
+        CHECK_NONZERO(ValidName(cond.rhsAttr.relName));
+        CHECK_NONZERO(ValidName(cond.rhsAttr.attrName));
+        CHECK_NONZERO(FindAttr(cond.rhsAttr.relName, cond.rhsAttr.attrName, attrInfo2, rid, found));
+        if (!found) // not found
+            return OK_RC;
+        if (attrInfo1.attrType != attrInfo2.attrType)
+        {
+            found = false;
+            return SM_TYPEMISMATCH;
+        }
+        return OK_RC;
+    }
+    else
+    {
+        if (attrInfo1.attrType != cond.rhsValue.type)
+        {
+            found = false;
+            return SM_TYPEMISMATCH;
+        }
+        return OK_RC;
+    }
 }
 
 RC SM_Manager::CreateTable(const char* relName, int attrCount, AttrInfo* attributes)
@@ -347,12 +419,18 @@ RC SM_Manager::CreateTable(const char* relName, int attrCount, AttrInfo* attribu
         if (attributes[i].attrType == INT || attributes[i].attrType == FLOAT)
         {
             if (attributes[i].attrLength != 4)
+            {
+                delete []attrinfo;
                 return SM_BADTABLEPARA;
+            }
         }
         else if (attributes[i].attrType == STRING)
         {
             if (attributes[i].attrLength < 1 || attributes[i].attrLength > MAXSTRINGLEN)
+            {
+                delete []attrinfo;
                 return SM_BADTABLEPARA;
+            }
         }
         else
             return SM_BADTABLEPARA;
