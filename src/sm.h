@@ -27,6 +27,8 @@ public:
     RC CheckRel(const char* relName, bool& found);
     RC CheckAttr(const char* relName, const char* attrName, bool& found);
     RC CheckCond(const Condition& cond, bool& found);
+    RC FindRelForAttr(RelAttr& attr, int numRel, const char* const possibleRels[]);
+    RC IsAttrIndexed(const char* relName, const char* attrName, bool& indexed);
 private:
     RC FindRel(const char* relName, DataRelInfo& rel, RID& rid, bool& found);
     RC FindAttr(const char* relName, const char* attrName, DataAttrInfo& attrinfo, RID& rid, bool& found);
@@ -55,6 +57,8 @@ private:
 #define SM_NOSUCHINDEX        (START_SM_WARN + 12) // no such index
 #define SM_OPENDIRERROR       (START_SM_WARN + 13) // get error when opening dir
 #define SM_TYPEMISMATCH       (START_SM_WARN + 14) // the types of two attr mismatch
+#define SM_NOSUCHENTRY        (START_SM_WARN + 15) // no such entry
+#define SM_MULTIPLERELSASATISFY (START_SM_WARN + 16) // multiple relations satisfy (more than one relations have the attr)
 
 #define SM_GETCWDERROR        (START_SM_ERR - 0) // get error when calling getcwd
 #define SM_CHDIRERROR         (START_SM_ERR - 1) // get error when calling chdir

@@ -390,6 +390,59 @@ RC SM_Manager::CheckCond(const Condition& cond, bool& found)
     }
 }
 
+RC SM_Manager::IsAttrIndexed(const char* relName, const char* attrName, bool& indexed)
+{
+    RC rc;
+    indexed = false;
+    if (!DBOpen)
+        return SM_DBNOTOPEN;
+    CHECK_NONZERO(ValidName(relName));
+    CHECK_NONZERO(ValidName(attrName));
+    DataAttrInfo attrInfo;
+    RID rid;
+    bool found = false;
+    CHECK_NONZERO(FindAttr(relName, attrName, attrInfo, rid, found));
+    if (found && attrInfo.indexNo != -1)
+        indexed = true;
+    else
+        indexed = false;
+    return OK_RC;
+}
+
+// find the relation which has the attr named attr.attrName
+// the input attr.relName must be null, the user needs to call free() for attr.relName
+RC SM_Manager::FindRelForAttr(RelAttr& attr, int numRel, const char* const possibleRels[])
+{
+    RC rc;
+    if (!DBOpen)
+        return SM_DBNOTOPEN;
+    if (attr.relName != NULL)
+        return OK_RC;
+
+    bool found = false;;
+    bool alreadyFound = false;
+    for (int i = 0; i < numRel; ++i)
+    {
+        CHECK_NONZERO(CheckAttr(possibleRels[i], attr.attrName, found));
+        if (found && !alreadyFound)
+        {
+            alreadyFound = true;
+            attr.relName = strdup(possibleRels[i]);
+        }
+        else if (found && alreadyFound)
+        {
+            free(attr.relName);
+            attr.relName = NULL;
+            return SM_MULTIPLERELSASATISFY;
+        }
+    }
+
+    if (!alreadyFound)
+        return SM_NOSUCHENTRY;
+    else
+        return OK_RC;
+}
+
 RC SM_Manager::CreateTable(const char* relName, int attrCount, AttrInfo* attributes)
 {
     RC rc;
