@@ -30,7 +30,9 @@ SM_Manager::SM_Manager(RM_Manager& rm_Manager, IX_Manager& ix_Manager)
 
 SM_Manager::~SM_Manager()
 {
-    //TODO: handle open db
+    RC rc;
+    if (DBOpen)
+        PRINT_NONZERO(CloseDb());
 }
 
 RC SM_Manager::ValidName(const char* name) const

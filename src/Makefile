@@ -42,10 +42,10 @@ IX_SOURCES     = ix_manager.cc ix_indexscan.cc ix_error.cc \
 				 ix_indexhandle.cc btreenode.cc ix_manager_gtest.cc \
 				 ix_indexhandle_gtest.cc ix_indexscan_gtest.cc
 
-SM_SOURCES     = sm_manager.cc sm_manager_gtest.cc #sm_stub.cc printer.cc
+SM_SOURCES     = sm_manager.cc sm_manager_gtest.cc sm_error.cc #sm_stub.cc printer.cc
 QL_SOURCES     = ql_manager.cc ql_manager_gtest.cc
-UTILS_SOURCES  = #naivedb.cc dbcreate.cc dbdestroy.cc
-PARSER_SOURCES = #scan.c parse.c nodes.c interp.c
+UTILS_SOURCES  = naivedb.cc #dbcreate.cc dbdestroy.cc
+PARSER_SOURCES = scan.c parse.c nodes.c interp.c
 TESTER_SOURCES = pf_test1.cc pf_test2.cc pf_test3.cc rm_test.cc ix_test.cc #parser_test.cc
 
 GTEST_SOURCES  = $(GTEST_DIR)/src/gtest-all.cc
@@ -71,13 +71,13 @@ LIBRARY_QL     = $(LIB_DIR)libql.a
 LIBRARY_PARSER = $(LIB_DIR)libparser.a
 LIBRARY_GTEST  = $(LIB_DIR)libgtest.a
 LIBRARIES      = $(LIBRARY_GTEST) $(LIBRARY_PF) $(LIBRARY_RM) $(LIBRARY_IX) \
-                 $(LIBRARY_SM) #$(LIBRARY_QL) $(LIBRARY_PARSER)
+                 $(LIBRARY_SM) $(LIBRARY_QL) $(LIBRARY_PARSER)
 
 UTILS          = $(UTILS_SOURCES:.cc=)
 TESTS          = $(TESTER_SOURCES:.cc=)
 EXECUTABLES    = $(UTILS) $(TESTS)
 
-LIBS           = -lix -lrm -lpf -lgtest -lsm # -lparser -lql 
+LIBS           = -lgtest -lparser -lql -lsm -lix -lrm -lpf  
 
 #
 # Build targets

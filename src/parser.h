@@ -46,11 +46,13 @@ struct Condition{
 std::ostream &operator<<(std::ostream &s, const CompOp &op);
 std::ostream &operator<<(std::ostream &s, const AttrType &at);
 
+
 //
 // Parse function
 //
 class QL_Manager;
 class SM_Manager;
+void RBparse(PF_Manager &pfm, SM_Manager &smm, QL_Manager &qlm);
 
 // bQueryPlans is allocated by parse.y.  When bQueryPlans is 1 then the
 // query plan chosen for the SFW query will be displayed.  When
