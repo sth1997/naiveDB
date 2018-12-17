@@ -285,6 +285,8 @@ NODE *value_node(AttrType type, void *value)
     case STRING:
       n->u.VALUE.sval = (char *)value;
       break;
+    case NULLTYPE:
+      break;
     }
     return n;
 }
@@ -306,12 +308,13 @@ NODE *relattr_or_value_node(NODE *relattr, NODE *value)
  * attrtype_node: allocates, initializes, and returns a pointer to a new
  * attrtype node having the indicated values.
  */
-NODE *attrtype_node(char *attrname, NODE *type)
+NODE *attrtype_node(char *attrname, NODE *type, int couldBeNULL)
 {
     NODE *n = newnode(N_ATTRTYPE);
 
     n -> u.ATTRTYPE.attrname = attrname;
     n -> u.ATTRTYPE.attrType = type;
+    n -> u.ATTRTYPE.couldBeNULL = couldBeNULL;
     return n;
 }
 
@@ -418,5 +421,19 @@ NODE *desc_node(char *tableName)
 {
     NODE *n = newnode(N_DESC);
     n->u.DESC.tableName = tableName;
+    return n;
+}
+
+NODE *primarykey_node(NODE *columnList)
+{
+    NODE *n = newnode(N_PRIMARYKEY);
+    n->u.PRIMARYKEY.columnListNode = columnList;
+    return n;
+}
+
+NODE *column_node(char *columnName)
+{
+    NODE *n = newnode(N_COLUMN);
+    n->u.COLUMN.columnName = columnName;
     return n;
 }

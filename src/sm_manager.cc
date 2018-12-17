@@ -158,6 +158,22 @@ RC SM_Manager::CreateDb(const char* dbName)
     attr.offset = offsetof(DataAttrInfo, attrName);
     CHECK_NONZERO(attrcat.InsertRec((char*) &attr, rid));
 
+    strcpy(attr.relName, "attrcat");
+    strcpy(attr.attrName, "couldBeNULL");
+    attr.attrLength = sizeof(int);
+    attr.attrType = INT;
+    attr.indexNo = -1;
+    attr.offset = offsetof(DataAttrInfo, couldBeNULL);
+    CHECK_NONZERO(attrcat.InsertRec((char*) &attr, rid));
+
+    strcpy(attr.relName, "attrcat");
+    strcpy(attr.attrName, "isPrimaryKey");
+    attr.attrLength = sizeof(int);
+    attr.attrType = INT;
+    attr.indexNo = -1;
+    attr.offset = offsetof(DataAttrInfo, isPrimaryKey);
+    CHECK_NONZERO(attrcat.InsertRec((char*) &attr, rid));
+
     CHECK_NONZERO(rmm.CloseFile(relcat));
     CHECK_NONZERO(rmm.CloseFile(attrcat));
 
@@ -448,6 +464,7 @@ RC SM_Manager::FindRelForAttr(RelAttr& attr, int numRel, const char* const possi
 
 RC SM_Manager::CreateTable(const char* relName, int attrCount, AttrInfo* attributes)
 {
+    printf("attrCount = %d\n", attrCount);
     RC rc;
     CHECK_NONZERO(ValidName(relName));
     if (!DBOpen)
@@ -750,9 +767,16 @@ RC SM_Manager::PrintTable(const char* relName)
         PrintAttrType(attr.attrType);
         printf("(%d)", attr.attrLength);
         if (attr.indexNo == -1)
-            printf("         NOT INDEXED\n");
+            printf("         NOT INDEXED");
         else
-            printf("         INDEXED\n");
+            printf("         INDEXED");
+        if (attr.couldBeNULL == 0)
+            printf("         NOT NULL");
+        else
+            printf("                 ");
+        if (attr.isPrimaryKey == 1)
+            printf("         PRIMARY KEY");
+        printf("\n");
     }
     return OK_RC;
 }

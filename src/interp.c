@@ -11,6 +11,8 @@
 #include <string.h>
 #include <unistd.h>
 #include <sys/types.h>
+#include <map>
+#include <vector>
 #include "naivedb.h"
 #include "parser_internal.h"
 #include "y.tab.h"
@@ -32,6 +34,7 @@ extern QL_Manager *pQlm;
 #define E_DUPLICATEATTR     -8
 #define E_TOOLONG           -9
 #define E_STRINGTOOLONG     -10
+#define E_NOSUCHATTR        -11
 
 /*
  * file pointer to which error messages are printed
@@ -333,6 +336,9 @@ static int mk_attr_infos(NODE *list, int max, AttrInfo attrInfos[])
    NODE *attr;
    //RC errval;
    NODE *typeNode;
+   std::vector<char*> primaryKeyNames;
+   std::map<std::string, int> attrNames;
+   int attrNum = 0;
 
    /* for each element of the list... */
    for(i = 0; list != NULL; ++i, list = list -> u.LIST.next) {
@@ -342,6 +348,20 @@ static int mk_attr_infos(NODE *list, int max, AttrInfo attrInfos[])
          return E_TOOMANY;
 
       attr = list -> u.LIST.curr;
+      NODEKIND tmp;
+      tmp = N_LIST;
+      if (attr->kind == N_PRIMARYKEY)
+      {
+         NODE *columnList = attr->u.PRIMARYKEY.columnListNode;
+         NODE *column;
+         for (int j = 0; columnList != NULL; ++j, columnList = columnList->u.LIST.next)
+         {
+            column = columnList->u.LIST.curr;
+            primaryKeyNames.push_back(column->u.COLUMN.columnName);
+            printf("%s\n", column->u.COLUMN.columnName);
+         }
+         continue;
+      }
 
       /* Make sure the attribute name isn't too long */
       if(strlen(attr -> u.ATTRTYPE.attrname) > MAXNAME)
@@ -353,13 +373,25 @@ static int mk_attr_infos(NODE *list, int max, AttrInfo attrInfos[])
          return errval;*/
 
       /* add it to the list */
-      attrInfos[i].attrName = attr -> u.ATTRTYPE.attrname;
+      attrInfos[attrNum].attrName = attr -> u.ATTRTYPE.attrname;
+      attrNames[std::string(attrInfos[attrNum].attrName)] = attrNum;
       typeNode = attr->u.ATTRTYPE.attrType;
-      attrInfos[i].attrType = typeNode->u.TYPE.attrType;
-      attrInfos[i].attrLength = typeNode->u.TYPE.attrLength;
+      attrInfos[attrNum].attrType = typeNode->u.TYPE.attrType;
+      attrInfos[attrNum].attrLength = typeNode->u.TYPE.attrLength;
+      attrInfos[attrNum].couldBeNULL = attr -> u.ATTRTYPE.couldBeNULL;
+      attrNum++;
    }
-
-   return i;
+   for (auto pkName : primaryKeyNames)
+   {
+      if (attrNames.find(std::string(pkName)) != attrNames.end())
+      {
+         i = attrNames[std::string(pkName)];
+         attrInfos[i].isPrimaryKey = 1;
+      }
+      else
+         return E_NOSUCHATTR;
+   }
+   return attrNum;
 }
 
 /*
@@ -500,6 +532,9 @@ static void mk_value(NODE *node, Value &value)
       case STRING:
          value.data = (void *)node->u.VALUE.sval;
          break;
+      case NULLTYPE:
+         value.data = NULL;
+         break;
    }
 }
 
@@ -618,6 +653,9 @@ static void print_error(char *errmsg, RC errval)
          break;
       case E_STRINGTOOLONG:
          fprintf(stderr, "string attribute too long\n");
+         break;
+      case E_NOSUCHATTR:
+         fprintf(stderr, "no attributes correspond to the primary key");
          break;
       default:
          fprintf(ERRFP, "unrecognized errval: %d\n", errval);
@@ -781,6 +819,9 @@ static void print_value(NODE *n)
          break;
       case STRING:
          printf(" \"%s\"", n -> u.VALUE.sval);
+         break;
+      case NULLTYPE:
+         printf(" NULL");
          break;
    }
 }

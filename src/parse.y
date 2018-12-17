@@ -159,6 +159,8 @@ QL_Manager *pQlm;          // QL component manager
       showtables
       type
       desc
+      columnlist
+      column
 %%
 start
    : command ';'
@@ -419,9 +421,32 @@ non_mt_attrtype_list
 attrtype
    : T_STRING type
     {
-      $$ = attrtype_node($1, $2);
+      $$ = attrtype_node($1, $2, 1);
+   }
+   | T_STRING type RW_NOT RW_NULL
+   {
+      $$ = attrtype_node($1, $2, 0);
+   }
+   | RW_PRIMARY RW_KEY '(' columnlist ')'
+   {
+      $$ = primarykey_node($4);
    }
    ;
+columnlist
+   : column ',' columnlist
+   {
+      $$ = prepend($1, $3);
+   }
+   | column
+   {
+      $$ = list_node($1);
+   }
+   ;
+column
+   : T_STRING
+   {
+      $$ = column_node($1);
+   }
 type
    : RW_INT '(' T_INT ')'
    {
@@ -537,6 +562,10 @@ value
    | T_REAL
    {
       $$ = value_node(FLOAT, (void *)& $1);
+   }
+   | RW_NULL
+   {
+      $$ = value_node(NULLTYPE, NULL);
    }
    ;
 opt_relname

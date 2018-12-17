@@ -64,7 +64,8 @@ const int ALL_PAGES = -1;
 enum AttrType {
     INT,
     FLOAT,
-    STRING
+    STRING,
+    NULLTYPE
 };
 
 //
