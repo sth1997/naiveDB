@@ -157,6 +157,7 @@ QL_Manager *pQlm;          // QL component manager
       use
       showdatabases
       showtables
+      type
 %%
 start
    : command ';'
@@ -403,11 +404,24 @@ non_mt_attrtype_list
    }
    ;
 attrtype
-   : T_STRING T_STRING
+   : T_STRING type
     {
       $$ = attrtype_node($1, $2);
    }
    ;
+type
+   : RW_INT '(' T_INT ')'
+   {
+      $$ = type_int_node($3);
+   }
+   | RW_CHAR '(' T_INT ')'
+   {
+      $$ = type_string_node($3);
+   }
+   | RW_FLOAT
+   {
+      $$ = type_float_node();
+   }
 non_mt_select_clause
    : non_mt_relattr_list
    | '*'

@@ -68,7 +68,8 @@ typedef enum{
     N_DROPDATABASE,
     N_USE,
     N_SHOWDATABASES,
-    N_SHOWTABLES
+    N_SHOWTABLES,
+    N_TYPENODE
 } NODEKIND;
 
 /*
@@ -176,7 +177,7 @@ typedef struct node{
       /* <attribute, type> pair */
       struct{
          char *attrname;
-         char *type;
+         struct node *attrType;
       } ATTRTYPE;
 
       /* <value, type> pair */
@@ -212,7 +213,13 @@ typedef struct node{
       struct{
          char *dbname;
       }  USE;
-      
+
+      /* type node */
+      struct{
+         AttrType attrType;
+         int attrLength;
+      } TYPE;
+
    } u;
 } NODE;
 
@@ -238,7 +245,7 @@ NODE *relattr_node(char *relname, char *attrname);
 NODE *condition_node(NODE *lhsRelattr, CompOp op, NODE *rhsRelattrOrValue);
 NODE *value_node(AttrType type, void *value);
 NODE *relattr_or_value_node(NODE *relattr, NODE *value);
-NODE *attrtype_node(char *attrname, char *type);
+NODE *attrtype_node(char *attrname, NODE *type);
 NODE *relation_node(char *relname);
 NODE *list_node(NODE *n);
 NODE *prepend(NODE *n, NODE *list);
@@ -247,6 +254,9 @@ NODE *drop_database_node(char *dbname);
 NODE *use_node(char *dbname);
 NODE *show_databases_node();
 NODE *show_tables_node();
+NODE *type_int_node(int len);
+NODE *type_string_node(int len);
+NODE *type_float_node();
 
 
 void reset_scanner(void);

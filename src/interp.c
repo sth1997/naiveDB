@@ -322,10 +322,11 @@ RC interp(NODE *n)
 static int mk_attr_infos(NODE *list, int max, AttrInfo attrInfos[])
 {
    int i;
-   int len;
-   AttrType type;
+   //int len;
+   //AttrType type;
    NODE *attr;
-   RC errval;
+   //RC errval;
+   NODE *typeNode;
 
    /* for each element of the list... */
    for(i = 0; list != NULL; ++i, list = list -> u.LIST.next) {
@@ -341,14 +342,15 @@ static int mk_attr_infos(NODE *list, int max, AttrInfo attrInfos[])
          return E_TOOLONG;
 
       /* interpret the format string */
-      errval = parse_format_string(attr -> u.ATTRTYPE.type, &type, &len);
+      /*errval = parse_format_string(attr -> u.ATTRTYPE.type, &type, &len);
       if(errval != E_OK)
-         return errval;
+         return errval;*/
 
       /* add it to the list */
       attrInfos[i].attrName = attr -> u.ATTRTYPE.attrname;
-      attrInfos[i].attrType = type;
-      attrInfos[i].attrLength = len;
+      typeNode = attr->u.ATTRTYPE.attrType;
+      attrInfos[i].attrType = typeNode->u.TYPE.attrType;
+      attrInfos[i].attrLength = typeNode->u.TYPE.attrLength;
    }
 
    return i;
@@ -708,10 +710,20 @@ static void echo_query(NODE *n)
 static void print_attrtypes(NODE *n)
 {
    NODE *attr;
+   NODE *typeNode;
+   const char* c;
 
    for(; n != NULL; n = n -> u.LIST.next){
       attr = n -> u.LIST.curr;
-      printf("%s = %s", attr -> u.ATTRTYPE.attrname, attr -> u.ATTRTYPE.type);
+      typeNode = attr -> u.ATTRTYPE.attrType;
+      AttrType t = typeNode->u.TYPE.attrType;
+      if (t == INT)
+         c = "INT";
+      else if (t == STRING)
+         c = "STRING";
+      else if (t == FLOAT)
+         c = "FLOAT";
+      printf("%s = %s(%d)", attr -> u.ATTRTYPE.attrname, c, typeNode->u.TYPE.attrLength);
       if(n -> u.LIST.next != NULL)
          printf(", ");
    }

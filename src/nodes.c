@@ -306,12 +306,12 @@ NODE *relattr_or_value_node(NODE *relattr, NODE *value)
  * attrtype_node: allocates, initializes, and returns a pointer to a new
  * attrtype node having the indicated values.
  */
-NODE *attrtype_node(char *attrname, char *type)
+NODE *attrtype_node(char *attrname, NODE *type)
 {
     NODE *n = newnode(N_ATTRTYPE);
 
     n -> u.ATTRTYPE.attrname = attrname;
-    n -> u.ATTRTYPE.type = type;
+    n -> u.ATTRTYPE.attrType = type;
     return n;
 }
 
@@ -387,5 +387,29 @@ NODE *show_databases_node()
 NODE *show_tables_node()
 {
     NODE *n = newnode(N_SHOWTABLES);
+    return n;
+}
+
+NODE *type_int_node(int len)
+{
+    NODE *n = newnode(N_TYPENODE);
+    n->u.TYPE.attrType = INT;
+    n->u.TYPE.attrLength = len;
+    return n;
+}
+
+NODE *type_string_node(int len)
+{
+    NODE *n = newnode(N_TYPENODE);
+    n->u.TYPE.attrType = STRING;
+    n->u.TYPE.attrLength = len;
+    return n;
+}
+
+NODE *type_float_node()
+{
+    NODE *n = newnode(N_TYPENODE);
+    n->u.TYPE.attrType = FLOAT;
+    n->u.TYPE.attrLength = 4;
     return n;
 }
