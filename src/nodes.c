@@ -413,3 +413,10 @@ NODE *type_float_node()
     n->u.TYPE.attrLength = 4;
     return n;
 }
+
+NODE *desc_node(char *tableName)
+{
+    NODE *n = newnode(N_DESC);
+    n->u.DESC.tableName = tableName;
+    return n;
+}
