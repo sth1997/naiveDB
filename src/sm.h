@@ -44,6 +44,8 @@ private:
     //char cwd[255]; // current working directory;
 };
 
+void SM_PrintError(RC rc);
+
 #define SM_NULLDBNAME         (START_SM_WARN + 0) // dbName == NULL
 #define SM_DBALREADYOPEN      (START_SM_WARN + 1) // db already open
 #define SM_NOSUCHDB           (START_SM_WARN + 2) // no such db (can't find such db by dbName)

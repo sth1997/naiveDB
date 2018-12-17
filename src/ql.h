@@ -14,6 +14,8 @@
 #include "ix.h"
 #include "sm.h"
 #include "parser.h"
+#include <map>
+#include <set>
 
 //
 // QL_Manager: query language (DML)
@@ -48,8 +50,8 @@ public:
 
 private:
     RC CheckAttr(RelAttr attr,
-        std::map<std::string,std::set<std::string>> attr2rels,
-        std::map<std::string, int> relsCnt);
+        std::map<std::string,std::set<std::string> > &attr2rels,
+        std::map<std::string, int> &relsCnt);
     RM_Manager* rm_mgr;          // RM_Manager object
     IX_Manager* ix_mgr;          // IX_Manager object
     SM_Manager* sm_mgr;          // SM_Manager object

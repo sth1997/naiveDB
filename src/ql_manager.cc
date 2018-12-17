@@ -53,7 +53,7 @@ QL_Manager::~QL_Manager()
 {
 }
 
-RC CheckAttr(RelAttr attr, map<string, set<string>>& attr2rels, map<string, int>& relsCnt) {
+RC QL_Manager::CheckAttr(RelAttr attr, map<string, set<string>>& attr2rels, map<string, int>& relsCnt) {
     string attrname(attr.attrName);
     if (attr.relName == NULL) {
         // attr must belong to someone

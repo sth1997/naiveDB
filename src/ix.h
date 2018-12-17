@@ -136,6 +136,9 @@ private:
     bool desc;
 };
 
+void IX_PrintError(RC rc);
+
+
 #define IX_SCAN_CLOSED          (START_IX_WARN + 0) // scan is closed
 #define IX_NODEISFULL           (START_IX_WARN + 1) // node is full, cannot insert an entry
 #define IX_NODEISEMPTY          (START_IX_WARN + 2) // node is empty, cannot delete an entry
