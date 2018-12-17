@@ -303,6 +303,12 @@ RC interp(NODE *n)
             break;
          }
 
+      case N_DESC:
+         {
+            errval = pSmm->PrintTable(n->u.DESC.tableName);
+            break;
+         }
+
       default:   // should never get here
          break;
    }

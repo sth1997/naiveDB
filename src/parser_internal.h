@@ -69,7 +69,8 @@ typedef enum{
     N_USE,
     N_SHOWDATABASES,
     N_SHOWTABLES,
-    N_TYPENODE
+    N_TYPENODE,
+    N_DESC
 } NODEKIND;
 
 /*
@@ -220,6 +221,11 @@ typedef struct node{
          int attrLength;
       } TYPE;
 
+      /* desc node */
+      struct{
+         char *tableName;
+      } DESC;
+
    } u;
 } NODE;
 
@@ -257,6 +263,7 @@ NODE *show_tables_node();
 NODE *type_int_node(int len);
 NODE *type_string_node(int len);
 NODE *type_float_node();
+NODE *desc_node(char *tableName);
 
 
 void reset_scanner(void);

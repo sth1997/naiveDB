@@ -158,6 +158,7 @@ QL_Manager *pQlm;          // QL component manager
       showdatabases
       showtables
       type
+      desc
 %%
 start
    : command ';'
@@ -205,6 +206,7 @@ showdatabases
    {
       $$ = show_databases_node();
    }
+   ;
 
 db
    : createdatabase
@@ -218,6 +220,7 @@ ddl
    | createindex
    | droptable
    | dropindex
+   | desc
    ;
 dml
    : query
@@ -299,21 +302,25 @@ createdatabase
    {
       $$ = create_database_node($3);
    }
+   ;
 dropdatabase
    : RW_DROP RW_DATABASE T_STRING
    {
       $$ = drop_database_node($3);
    }
+   ;
 use
    : RW_USE T_STRING
    {
       $$ = use_node($2);
    }
+   ;
 showtables
    : RW_SHOW RW_TABLES
    {
       $$ = show_tables_node();
    }
+   ;
 createtable
    : RW_CREATE RW_TABLE T_STRING '(' non_mt_attrtype_list ')'
    {
@@ -336,6 +343,12 @@ dropindex
    : RW_DROP RW_INDEX T_STRING '(' T_STRING ')'
    {
       $$ = drop_index_node($3, $5);
+   }
+   ;
+desc
+   : RW_DESC T_STRING
+   {
+      $$ = desc_node($2);
    }
    ;
 load
@@ -422,13 +435,14 @@ type
    {
       $$ = type_float_node();
    }
+   ;
 non_mt_select_clause
    : non_mt_relattr_list
    | '*'
    {
        $$ = list_node(relattr_node(NULL, (char*)"*"));
    }
-      
+   ;
 non_mt_relattr_list
    : relattr ',' non_mt_relattr_list
    {
