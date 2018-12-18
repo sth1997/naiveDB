@@ -162,6 +162,8 @@ QL_Manager *pQlm;          // QL component manager
       columnlist
       column
       valueLists
+      setclause
+      setitem
 %%
 start
    : command ';'
@@ -404,9 +406,26 @@ delete
    }
    ;
 update
-   : RW_UPDATE T_STRING RW_SET relattr T_EQ relattr_or_value opt_where_clause
+   //: RW_UPDATE T_STRING RW_SET relattr T_EQ relattr_or_value opt_where_clause
+   : RW_UPDATE T_STRING RW_SET setclause opt_where_clause
    {
-      $$ = update_node($2, $4, $6, $7);
+      $$ = update_node($2, $4, $5);
+   }
+   ;
+setclause
+   :  setitem ',' setclause
+   {
+      $$ = prepend($1, $3);
+   }
+   | setitem
+   {
+      $$ = list_node($1);
+   }
+   ;
+setitem
+   : T_STRING T_EQ value
+   {
+      $$ = setitem_node($1, $3);
    }
    ;
 non_mt_attrtype_list
@@ -715,6 +734,9 @@ ostream &operator<<(ostream &s, const Value &v)
       case STRING:
          s << " (char *)data=" << (char *)v.data;
          break;
+      case NULLTYPE:
+         s << " NULL ";
+         break;
    }
    return s;
 }
@@ -756,6 +778,9 @@ ostream &operator<<(ostream &s, const AttrType &at)
          break;
       case STRING:
          s << "STRING";
+         break;
+      case NULLTYPE:
+         s << "NULL";
          break;
    }
    return s;

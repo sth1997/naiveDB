@@ -72,7 +72,8 @@ typedef enum{
     N_TYPENODE,
     N_DESC,
     N_PRIMARYKEY,
-    N_COLUMN
+    N_COLUMN,
+    N_SETITEM
 } NODEKIND;
 
 /*
@@ -151,8 +152,7 @@ typedef struct node{
       /* update node */
       struct{
          char *relname;
-         struct node *relattr;
-         struct node *relorvalue;
+         struct node *setitemList;
          struct node *conditionlist;
       } UPDATE;
 
@@ -239,6 +239,13 @@ typedef struct node{
       {
          char *columnName;
       } COLUMN;
+
+      /* setitem node */
+      struct
+      {
+         char *columnName;
+         struct node *valueNode;
+      } SETITEM;
    } u;
 } NODE;
 
@@ -258,7 +265,7 @@ NODE *print_node(char *relname);
 NODE *query_node(NODE *relattrlist, NODE *rellist, NODE *conditionlist);
 NODE *insert_node(char *relname, NODE *valuelists);
 NODE *delete_node(char *relname, NODE *conditionlist);
-NODE *update_node(char *relname, NODE *relattr, NODE *value,
+NODE *update_node(char *relname, NODE *setitemList,
 		  NODE *conditionlist);
 NODE *relattr_node(char *relname, char *attrname);
 NODE *condition_node(NODE *lhsRelattr, CompOp op, NODE *rhsRelattrOrValue);
@@ -279,6 +286,7 @@ NODE *type_float_node();
 NODE *desc_node(char *tableName);
 NODE *primarykey_node(NODE *columnList);
 NODE *column_node(char *columnName);
+NODE *setitem_node(char *columnName, NODE *setitemList);
 
 
 void reset_scanner(void);

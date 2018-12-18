@@ -49,6 +49,7 @@ static int parse_format_string(char *format_string, AttrType *type, int *len);
 static int mk_rel_attrs(NODE *list, int max, RelAttr relAttrs[]);
 static void mk_rel_attr(NODE *node, RelAttr &relAttr);
 static int mk_relations(NODE *list, int max, char *relations[]);
+static int mk_setitems(NODE *list, int max, char* columns[], Value values[]);
 static int mk_conditions(NODE *list, int max, Condition conditions[]);
 static int mk_values(NODE *list, int max, Value values[]);
 static void mk_value(NODE *node, Value &value);
@@ -234,27 +235,19 @@ RC interp(NODE *n)
 
       case N_UPDATE:            /* for Update() */
          {
-            RelAttr relAttr;
-
-            // The RHS can be either a value or an attribute
-            Value rhsValue;
-            RelAttr rhsRelAttr;
-            int bIsValue;
+            int nColumns = 0;
+            char* columns[MAXATTRS];
+            Value rhsValues[MAXATTRS];
 
             int nConditions = 0;
             Condition conditions[MAXATTRS];
 
-            /* Make a RelAttr suitable for sending to Update */
-            mk_rel_attr(n->u.UPDATE.relattr, relAttr);
 
-            struct node *rhs = n->u.UPDATE.relorvalue;
-            if (rhs->u.RELATTR_OR_VALUE.relattr) {
-               mk_rel_attr(rhs->u.RELATTR_OR_VALUE.relattr, rhsRelAttr);
-               bIsValue = 0;
-            } else {
-               /* Make a value suitable for sending to update */
-               mk_value(rhs->u.RELATTR_OR_VALUE.value, rhsValue);
-               bIsValue = 1;
+            nColumns = mk_setitems(n->u.UPDATE.setitemList, MAXATTRS, columns, rhsValues);
+            if (nColumns < 0)
+            {
+               print_error((char*)"update", nConditions);
+               break;
             }
 
             /* Make a list of Conditions suitable for sending to Update */
@@ -264,10 +257,12 @@ RC interp(NODE *n)
                print_error((char*)"update", nConditions);
                break;
             }
-
+            //for (int i = 0; i < nColumns; ++i)
+            //   printf("%s %d\n", columns[i], rhsValues[i].type);
             /* Make the call to update */
-            errval = pQlm->Update(n->u.UPDATE.relname, relAttr, bIsValue, 
-                  rhsRelAttr, rhsValue, nConditions, conditions);
+            /*errval = pQlm->Update(n->u.UPDATE.relname, relAttr, bIsValue, 
+                  rhsRelAttr, rhsValue, nConditions, conditions);*/
+            errval = pQlm->Update(n->u.UPDATE.relname, nColumns, columns, rhsValues, nConditions, conditions);
             break;
          }   
 
@@ -454,6 +449,20 @@ static int mk_relations(NODE *list, int max, char *relations[])
       relations[i] = current->u.RELATION.relname;
    }
 
+   return i;
+}
+
+static int mk_setitems(NODE *list, int max, char* columns[], Value values[])
+{
+   int i;
+   NODE *current;
+   for(i = 0; list != NULL; ++i, list = list -> u.LIST.next){
+      if(i == max)
+         return E_TOOMANY;
+      current = list -> u.LIST.curr;
+      columns[i] = current -> u.SETITEM.columnName;
+      mk_value(current -> u.SETITEM.valueNode, values[i]);
+   }
    return i;
 }
 
@@ -731,23 +740,24 @@ static void echo_query(NODE *n)
       case N_UPDATE:            /* for Update() */
          {
             printf("update %s set ",n->u.UPDATE.relname);
-            print_relattr(n->u.UPDATE.relattr);
-            printf(" = ");
-            struct node *rhs = n->u.UPDATE.relorvalue;
-
-            /* The RHS can be either a relation.attribute or a value */
-            if (rhs->u.RELATTR_OR_VALUE.relattr) {
-               /* Print out the relation.attribute */
-               print_relattr(rhs->u.RELATTR_OR_VALUE.relattr);
-            } else {
-               /* Print out the value */
-               print_value(rhs->u.RELATTR_OR_VALUE.value);
-            }
-            if (n->u.UPDATE.conditionlist) {
-               printf("where ");
-               print_conditions(n->u.UPDATE.conditionlist);
-            }
-            printf(";\n");
+            printf("sth unnotated this print message!!!!!!");
+            ////print_relattr(n->u.UPDATE.relattr);
+            //printf(" = ");
+            //struct node *rhs = n->u.UPDATE.relorvalue;
+//
+            ///* The RHS can be either a relation.attribute or a value */
+            //if (rhs->u.RELATTR_OR_VALUE.relattr) {
+            //   /* Print out the relation.attribute */
+            //   print_relattr(rhs->u.RELATTR_OR_VALUE.relattr);
+            //} else {
+            //   /* Print out the value */
+            //   print_value(rhs->u.RELATTR_OR_VALUE.value);
+            //}
+            //if (n->u.UPDATE.conditionlist) {
+            //   printf("where ");
+            //   print_conditions(n->u.UPDATE.conditionlist);
+            //}
+            //printf(";\n");
             break;
          }
       default:   // should never get here

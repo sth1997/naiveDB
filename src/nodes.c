@@ -223,14 +223,13 @@ NODE *delete_node(char *relname, NODE *conditionlist)
  * update_node: allocates, initializes, and returns a pointer to a new
  * update node having the indicated values.
  */
-NODE *update_node(char *relname, NODE *relattr, NODE *relorvalue, 
+NODE *update_node(char *relname, NODE *setitemList, 
 		  NODE *conditionlist)
 {
     NODE *n = newnode(N_UPDATE);
 
     n->u.UPDATE.relname = relname;
-    n->u.UPDATE.relattr = relattr;
-    n->u.UPDATE.relorvalue = relorvalue;
+    n->u.UPDATE.setitemList = setitemList;
     n->u.UPDATE.conditionlist = conditionlist;
     return n;
 }
@@ -435,5 +434,13 @@ NODE *column_node(char *columnName)
 {
     NODE *n = newnode(N_COLUMN);
     n->u.COLUMN.columnName = columnName;
+    return n;
+}
+
+NODE *setitem_node(char *columnName, NODE *valueNode)
+{
+    NODE *n = newnode(N_SETITEM);
+    n->u.SETITEM.columnName = columnName;
+    n->u.SETITEM.valueNode = valueNode;
     return n;
 }
