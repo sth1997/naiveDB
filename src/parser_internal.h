@@ -139,7 +139,7 @@ typedef struct node{
       /* insert node */
       struct{
          char *relname;
-         struct node *valuelist;
+         struct node *valuelists;
       } INSERT;
 
       /* delete node */
@@ -256,7 +256,7 @@ NODE *set_node(char *paramName, char *string);
 NODE *help_node(char *relname);
 NODE *print_node(char *relname);
 NODE *query_node(NODE *relattrlist, NODE *rellist, NODE *conditionlist);
-NODE *insert_node(char *relname, NODE *valuelist);
+NODE *insert_node(char *relname, NODE *valuelists);
 NODE *delete_node(char *relname, NODE *conditionlist);
 NODE *update_node(char *relname, NODE *relattr, NODE *value,
 		  NODE *conditionlist);

@@ -193,16 +193,23 @@ RC interp(NODE *n)
             int nValues = 0;
             Value values[MAXATTRS];
 
-            /* Make a list of Values suitable for sending to Insert */
-            nValues = mk_values(n->u.INSERT.valuelist, MAXATTRS, values);
-            if(nValues < 0){
-               print_error((char*)"insert", nValues);
-               break;
-            }
+            //TODO: insert all lists at once
+            NODE *valueLists = n->u.INSERT.valuelists;
+            for (; valueLists != NULL; valueLists = valueLists->u.LIST.next)
+            {
+               /* Make a list of Values suitable for sending to Insert */
+               NODE *valueList = valueLists->u.LIST.curr;
+               nValues = 0;
+               nValues = mk_values(valueList, MAXATTRS, values);
+               if(nValues < 0){
+                  print_error((char*)"insert", nValues);
+                  break;
+               }
 
-            /* Make the call to insert */
-            errval = pQlm->Insert(n->u.INSERT.relname,
-                  nValues, values);
+               /* Make the call to insert */
+               errval = pQlm->Insert(n->u.INSERT.relname,
+                     nValues, values);
+            }
             break;
          }   
 
@@ -348,8 +355,6 @@ static int mk_attr_infos(NODE *list, int max, AttrInfo attrInfos[])
          return E_TOOMANY;
 
       attr = list -> u.LIST.curr;
-      NODEKIND tmp;
-      tmp = N_LIST;
       if (attr->kind == N_PRIMARYKEY)
       {
          NODE *columnList = attr->u.PRIMARYKEY.columnListNode;
@@ -358,7 +363,6 @@ static int mk_attr_infos(NODE *list, int max, AttrInfo attrInfos[])
          {
             column = columnList->u.LIST.curr;
             primaryKeyNames.push_back(column->u.COLUMN.columnName);
-            printf("%s\n", column->u.COLUMN.columnName);
          }
          continue;
       }
@@ -712,7 +716,8 @@ static void echo_query(NODE *n)
          break;
       case N_INSERT:            /* for Insert() */
          printf("insert into %s values ( ",n->u.INSERT.relname);
-         print_values(n -> u.INSERT.valuelist);
+         printf("sth unnotated this print message!!!!!!");
+         //print_values(n -> u.INSERT.valuelist);
          printf(");\n");
          break;
       case N_DELETE:            /* for Delete() */

@@ -197,12 +197,12 @@ NODE *query_node(NODE *relattrlist, NODE *rellist, NODE *conditionlist)
  * insert_node: allocates, initializes, and returns a pointer to a new
  * insert node having the indicated values.
  */
-NODE *insert_node(char *relname, NODE *valuelist)
+NODE *insert_node(char *relname, NODE *valuelists)
 {
     NODE *n = newnode(N_INSERT);
 
     n->u.INSERT.relname = relname;
-    n->u.INSERT.valuelist = valuelist;
+    n->u.INSERT.valuelists = valuelists;
     return n;
 }
 

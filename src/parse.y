@@ -161,6 +161,7 @@ QL_Manager *pQlm;          // QL component manager
       desc
       columnlist
       column
+      valueLists
 %%
 start
    : command ';'
@@ -391,9 +392,9 @@ query
    }
    ;
 insert
-   : RW_INSERT RW_INTO T_STRING RW_VALUES '(' non_mt_value_list ')'
+   : RW_INSERT RW_INTO T_STRING RW_VALUES valueLists
    {
-      $$ = insert_node($3, $6);
+      $$ = insert_node($3, $5);
    }
    ;
 delete
@@ -538,6 +539,16 @@ relattr_or_value
    | value
    {
       $$ = relattr_or_value_node(NULL, $1);
+   }
+   ;
+valueLists
+   : '(' non_mt_value_list ')' ',' valueLists
+   {
+      $$ = prepend($2, $5);
+   }
+   | '(' non_mt_value_list ')'
+   {
+      $$ = list_node($2);
    }
    ;
 non_mt_value_list

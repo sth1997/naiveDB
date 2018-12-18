@@ -38,7 +38,7 @@ s_num                [+\-]?{num}
                       return T_REAL;}
 {s_num}\.{num}[Ee]{s_num}   {sscanf(yytext, "%f", &yylval.rval);
                              return T_REAL;}
-\"([^\"\n]|(\"\"))*\"       {yylval.sval = get_qstring(yytext, yyleng);
+\'([^\'\n]|(\'\'))*\'       {yylval.sval = get_qstring(yytext, yyleng);
                              return T_QSTRING;}
 \"([^\"\n]|(\"\"))*\n       {printf("newline in string constant\n");}
 {letter}({letter}|{digit}|_)*   {return get_id(yylval.sval = yytext);}
@@ -52,7 +52,7 @@ s_num                [+\-]?{num}
 !                    {BEGIN(shell_cmd);}
 <shell_cmd>[^\n]*    {yylval.sval = yytext; return T_SHELL_CMD;}
 <shell_cmd>\n        {BEGIN(INITIAL);}
-[*/+\-=<>':;,.|&()]  {return yytext[0];}
+[*/+\-=<>:;,.|&()]  {return yytext[0];}
 <<EOF>>              {return T_EOF;}
 .                    {printf("illegal character [%c]\n", yytext[0]);}
 %%
