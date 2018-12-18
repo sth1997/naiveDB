@@ -489,17 +489,38 @@ static int mk_conditions(NODE *list, int max, Condition conditions[])
          current->u.CONDITION.lhsRelattr->u.RELATTR.relname;
       conditions[i].lhsAttr.attrName = 
          current->u.CONDITION.lhsRelattr->u.RELATTR.attrname;
-      conditions[i].op = current->u.CONDITION.op;
-      if (current->u.CONDITION.rhsRelattr) {
-         conditions[i].bRhsIsAttr = TRUE;
-         conditions[i].rhsAttr.relName = 
-            current->u.CONDITION.rhsRelattr->u.RELATTR.relname;
-         conditions[i].rhsAttr.attrName = 
-            current->u.CONDITION.rhsRelattr->u.RELATTR.attrname;
-      }
-      else {
+      if (current->u.CONDITION.isOrNotNULL == 1 || current->u.CONDITION.isOrNotNULL == -1)
+      {
+         conditions[i].op = NO_OP;
          conditions[i].bRhsIsAttr = FALSE;
-         mk_value(current->u.CONDITION.rhsValue, conditions[i].rhsValue);
+         if (current->u.CONDITION.isOrNotNULL == 1)
+         {
+            conditions[i].isNULL = 1;
+            conditions[i].isNotNULL = 0;
+         }
+         else
+         {
+            conditions[i].isNULL = 0;
+            conditions[i].isNotNULL = 1;
+         }
+         //printf("%s %s %d %d\n", conditions[i].lhsAttr.relName, conditions[i].lhsAttr.attrName, conditions[i].isNULL, conditions[i].isNotNULL);
+      }
+      else
+      {
+         conditions[i].op = current->u.CONDITION.op;
+         if (current->u.CONDITION.rhsRelattr) {
+            conditions[i].bRhsIsAttr = TRUE;
+            conditions[i].rhsAttr.relName = 
+               current->u.CONDITION.rhsRelattr->u.RELATTR.relname;
+            conditions[i].rhsAttr.attrName = 
+               current->u.CONDITION.rhsRelattr->u.RELATTR.attrname;
+         }
+         else {
+            conditions[i].bRhsIsAttr = FALSE;
+            mk_value(current->u.CONDITION.rhsValue, conditions[i].rhsValue);
+         }
+         conditions[i].isNULL = 0;
+         conditions[i].isNotNULL = 0;
       }
    }
 

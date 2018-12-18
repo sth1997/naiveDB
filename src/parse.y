@@ -547,7 +547,15 @@ non_mt_cond_list
 condition
    : relattr op relattr_or_value
    {
-      $$ = condition_node($1, $2, $3);
+      $$ = condition_node($1, $2, $3, 0);
+   }
+   | relattr RW_IS RW_NULL
+   {
+      $$ = condition_node($1, NO_OP, NULL, 1);
+   }
+   | relattr RW_IS RW_NOT RW_NULL
+   {
+      $$ = condition_node($1, NO_OP, NULL, -1);
    }
    ;
 relattr_or_value

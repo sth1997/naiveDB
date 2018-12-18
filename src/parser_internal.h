@@ -169,6 +169,7 @@ typedef struct node{
          CompOp op;
          struct node *rhsRelattr;
          struct node *rhsValue;
+         int isOrNotNULL; //1 means IS NULL, -1 means IS NOT NULL, 0 means it has right hand side value or attr
       } CONDITION;
 
       /* relation-attribute or value */
@@ -268,7 +269,7 @@ NODE *delete_node(char *relname, NODE *conditionlist);
 NODE *update_node(char *relname, NODE *setitemList,
 		  NODE *conditionlist);
 NODE *relattr_node(char *relname, char *attrname);
-NODE *condition_node(NODE *lhsRelattr, CompOp op, NODE *rhsRelattrOrValue);
+NODE *condition_node(NODE *lhsRelattr, CompOp op, NODE *rhsRelattrOrValue, int isOrNotNULL);
 NODE *value_node(AttrType type, void *value);
 NODE *relattr_or_value_node(NODE *relattr, NODE *value);
 NODE *attrtype_node(char *attrname, NODE *type, int couldBeNULL);

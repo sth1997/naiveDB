@@ -252,16 +252,27 @@ NODE *relattr_node(char *relname, char *attrname)
  * condition_node: allocates, initializes, and returns a pointer to a new
  * condition node having the indicated values.
  */
-NODE *condition_node(NODE *lhsRelattr, CompOp op, NODE *rhsRelattrOrValue)
+NODE *condition_node(NODE *lhsRelattr, CompOp op, NODE *rhsRelattrOrValue, int isOrNotNULL)
 {
     NODE *n = newnode(N_CONDITION);
 
     n->u.CONDITION.lhsRelattr = lhsRelattr;
-    n->u.CONDITION.op = op;
-    n->u.CONDITION.rhsRelattr = 
-      rhsRelattrOrValue->u.RELATTR_OR_VALUE.relattr;
-    n->u.CONDITION.rhsValue = 
-      rhsRelattrOrValue->u.RELATTR_OR_VALUE.value;
+    if (isOrNotNULL == 1 || isOrNotNULL == -1)
+    {
+        n->u.CONDITION.op = NO_OP;
+        n->u.CONDITION.rhsRelattr = NULL;
+        n->u.CONDITION.rhsValue = NULL;
+        n->u.CONDITION.isOrNotNULL = isOrNotNULL;
+    }
+    else
+    {
+        n->u.CONDITION.op = op;
+        n->u.CONDITION.rhsRelattr = 
+        rhsRelattrOrValue->u.RELATTR_OR_VALUE.relattr;
+        n->u.CONDITION.rhsValue = 
+        rhsRelattrOrValue->u.RELATTR_OR_VALUE.value;
+        n->u.CONDITION.isOrNotNULL = 0;
+    }
     return n;
 }
 
