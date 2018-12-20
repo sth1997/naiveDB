@@ -51,6 +51,7 @@ public:
     RC SetData    (char* data, int recordSize, const RID& rid);
     RC GetData    (char *&pData) const;
     RC GetRid     (RID &rid) const;
+    int GetRecordSize () { return recordSize; }
 private:
     char* data;
     int recordSize;

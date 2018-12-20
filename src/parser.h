@@ -40,7 +40,6 @@ struct Condition{
     RelAttr  rhsAttr;    /* right-hand side attribute            */
     Value    rhsValue;   /* right-hand side value                */
     friend std::ostream &operator<<(std::ostream &s, const Condition &c);
-
 };
 
 std::ostream &operator<<(std::ostream &s, const CompOp &op);

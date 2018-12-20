@@ -49,6 +49,8 @@ public:
         const Condition conditions[]);   // conditions in where clause
 
 private:
+    template<typename T>
+    bool matchValue(CompOp op, T lValue, T rValue);
     RC CheckAttr(RelAttr attr,
         std::map<std::string,std::set<std::string> > &attr2rels,
         std::map<std::string, int> &relsCnt);
@@ -72,7 +74,9 @@ void QL_PrintError(RC rc);
 #define QL_SELECT_REL_NOT_IN_FROM  (START_QL_WARN + 6) // select relations not in from clause
 #define QL_SELECT_REL_DIDNT_HAVE_THIS_ATTR (START_QL_WARN + 7) // select relations didn't have this attribute
 #define QL_INCOMPATIBLE_TYPE       (START_QL_WARN + 8) // condition type incompatible
-#define QL_LASTWARN                QL_INCOMPATIBLE_TYPE
+#define QL_EOF                     (START_QL_WARN + 9) // ql eof
+#define QL_NOT_SUPPORT_MULTI_JOIN_NOW (START_QL_WARN + 10) // ql didn't support multi join
+#define QL_LASTWARN                QL_NOT_SUPPORT_MULTI_JOIN_NOW
 
 // Errors
 #define QL_INVALID_DATABASE_NAME   (START_QL_ERR  - 0) // Invalid database file name

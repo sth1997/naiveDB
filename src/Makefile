@@ -42,11 +42,11 @@ IX_SOURCES     = ix_manager.cc ix_indexscan.cc ix_error.cc \
 				 ix_indexhandle.cc btreenode.cc ix_manager_gtest.cc \
 				 ix_indexhandle_gtest.cc ix_indexscan_gtest.cc
 
-SM_SOURCES     = sm_manager.cc sm_manager_gtest.cc sm_error.cc #sm_stub.cc printer.cc
+SM_SOURCES     = sm_manager.cc sm_manager_gtest.cc sm_error.cc printer.cc #sm_stub.cc
 QL_SOURCES     = ql_manager.cc ql_manager_gtest.cc
 UTILS_SOURCES  = naivedb.cc #dbcreate.cc dbdestroy.cc
 PARSER_SOURCES = scan.c parse.c nodes.c interp.c
-TESTER_SOURCES = pf_test1.cc pf_test2.cc pf_test3.cc rm_test.cc ix_test.cc #parser_test.cc
+TESTER_SOURCES = # pf_test1.cc pf_test2.cc pf_test3.cc rm_test.cc ix_test.cc parser_test.cc
 
 GTEST_SOURCES  = $(GTEST_DIR)/src/gtest-all.cc
 
