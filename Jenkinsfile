@@ -8,6 +8,8 @@ pipeline {
   stages {
     stage('Build') {
       steps {
+        sh '''apt update
+apt install -y bison flex'''
         sh '''mkdir build
 mkdir lib
 cd src
