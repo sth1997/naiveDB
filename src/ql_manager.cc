@@ -516,7 +516,6 @@ RC QL_Manager::Delete(const char *relName,
         CHECK_NOZERO(sm_mgr->FindAttr(conditions[i].lhsAttr.relName, conditions[i].lhsAttr.attrName, dataAttrInfo, rid, found));
         AttrType lhsType = dataAttrInfo.attrType;
         AttrType rhsType;
-        // 4.2 check rhsAttr && 4.3 check compatibility
         if (conditions[i].bRhsIsAttr) {
             CHECK_NOZERO(sm_mgr->FindAttr(conditions[i].rhsAttr.relName, conditions[i].rhsAttr.attrName, dataAttrInfo, rid, found));
             rhsType = dataAttrInfo.attrType;
@@ -633,7 +632,139 @@ RC QL_Manager::Update(const char *relName,
                       const Value &rhsValue,
                       int nConditions, const Condition conditions[])
 {
-    bool printPara = false;
+    RC rc;
+    RID rid;
+    vector<DataAttrInfo> attributes;
+    map<string, DataAttrInfo> attr2info;
+    CHECK_NOZERO(sm_mgr->FindAllAttrs(relName, attributes));
+    for (auto attr : attributes) {
+        attr2info[string(attr.relName)+"."+string(attr.attrName)] = attr;
+    }
+    // check attr
+    DataAttrInfo updAttrInfo = attr2info[string(updAttr.relName)+"."+string(updAttr.attrName)];
+    if (bIsValue) {
+        if (rhsValue.type != updAttrInfo.attrType) {
+            return QL_INCOMPATIBLE_TYPE;
+        }
+    } else {
+        DataAttrInfo rhsRelAttrInfo = attr2info[string(rhsRelAttr.relName)+"."+string(rhsRelAttr.attrName)];
+        if (rhsRelAttrInfo.attrType != updAttrInfo.attrType) {
+            return QL_INCOMPATIBLE_TYPE;
+        }
+    }
+    // check each condition
+    for (int i = 0; i < nConditions; i++) {
+        bool found;
+        DataAttrInfo dataAttrInfo;
+        CHECK_NOZERO(sm_mgr->FindAttr(conditions[i].lhsAttr.relName, conditions[i].lhsAttr.attrName, dataAttrInfo, rid, found));
+        AttrType lhsType = dataAttrInfo.attrType;
+        AttrType rhsType;
+        if (conditions[i].bRhsIsAttr) {
+            CHECK_NOZERO(sm_mgr->FindAttr(conditions[i].rhsAttr.relName, conditions[i].rhsAttr.attrName, dataAttrInfo, rid, found));
+            rhsType = dataAttrInfo.attrType;
+        } else {
+            rhsType = conditions[i].rhsValue.type;
+        }
+        if (lhsType != rhsType) {
+            return QL_INCOMPATIBLE_TYPE;
+        }
+    }
+    bool optimize = false;
+    if (!optimize) {
+        RM_FileHandle rm_fhdl;
+        rm_mgr->OpenFile(relName, rm_fhdl);
+        RM_FileScan rm_fscan;
+        int a = 0;
+        rm_fscan.OpenScan(rm_fhdl, INT, 4, 0, NO_OP, &a);
+        RM_Record rec;
+        char* pData;
+        // scan every record
+        while (rm_fscan.GetNextRec(rec) == OK_RC) {
+            rec.GetData(pData);
+            bool matched = true;
+            for (int i = 0; i < nConditions; i++) {
+                string lrname(conditions[i].lhsAttr.relName);
+                string laname(conditions[i].lhsAttr.attrName);
+                DataAttrInfo linfo = attr2info[lrname+"."+laname];
+                switch(linfo.attrType) {
+                    case INT: {
+                        int lvalue;
+                        memcpy(&lvalue, pData+linfo.offset, linfo.attrLength);
+                        int rvalue;
+                        if (conditions[i].bRhsIsAttr) {
+                            string rrname(conditions[i].rhsAttr.relName);
+                            string raname(conditions[i].rhsAttr.attrName);
+                            DataAttrInfo rinfo = attr2info[rrname+"."+raname];
+                            memcpy(&rvalue, pData+rinfo.offset, rinfo.attrLength);
+                        } else {
+                            memcpy(&rvalue, conditions[i].rhsValue.data, 4);
+                        }
+                        matched = matchValue(conditions[i].op, lvalue, rvalue);
+                        break;
+                    }
+                    case FLOAT: {
+                        float lvalue;
+                        memcpy(&lvalue, pData+linfo.offset, linfo.attrLength);
+                        float rvalue;
+                        if (conditions[i].bRhsIsAttr) {
+                            string rrname(conditions[i].rhsAttr.relName);
+                            string raname(conditions[i].rhsAttr.attrName);
+                            DataAttrInfo rinfo = attr2info[rrname+"."+raname];
+                            memcpy(&rvalue, pData+rinfo.offset, rinfo.attrLength);
+                        } else {
+                            memcpy(&rvalue, conditions[i].rhsValue.data, 4);
+                        }
+                        matched = matchValue(conditions[i].op, lvalue, rvalue);
+                        break;
+                    }
+                    case STRING: {
+                        string lvalue;
+                        memcpy(&lvalue, pData+linfo.offset, linfo.attrLength);
+                        string rvalue;
+                        if (conditions[i].bRhsIsAttr) {
+                            string rrname(conditions[i].rhsAttr.relName);
+                            string raname(conditions[i].rhsAttr.attrName);
+                            DataAttrInfo rinfo = attr2info[rrname+"."+raname];
+                            memcpy(&rvalue, pData+rinfo.offset, rinfo.attrLength);
+                        } else {
+                            memcpy(&rvalue, conditions[i].rhsValue.data, linfo.attrLength);
+                        }
+                        matched = matchValue(conditions[i].op, lvalue, rvalue);
+                        break;
+                    }
+                    default: {
+                        ;
+                    }
+                }
+                if (!matched) {
+                    break;
+                }
+            }
+            if (matched) {
+                char* tmp;
+                rec.GetData(tmp);
+                rec.GetRid(rid);
+                string lrname(updAttr.relName);
+                string laname(updAttr.attrName);
+                DataAttrInfo linfo = attr2info[lrname+"."+laname];
+                if (bIsValue) {
+                    memcpy(tmp+linfo.offset, rhsValue.data, linfo.attrLength);
+                } else {
+                    string rrname(rhsRelAttr.relName);
+                    string raname(rhsRelAttr.attrName);
+                    DataAttrInfo rinfo = attr2info[rrname+"."+raname];
+                    memcpy(tmp+linfo.offset, tmp+rinfo.offset, rinfo.attrLength);
+                }
+                rec.SetData(tmp, rec.GetRecordSize(), rid);
+                rm_fhdl.UpdateRec(rec);
+            }
+        }
+        rm_fscan.CloseScan();
+        rm_mgr->CloseFile(rm_fhdl);
+    } else {
+
+    }
+    bool printPara = true;
     if (printPara) {
         int i;
 
