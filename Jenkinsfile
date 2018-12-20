@@ -8,14 +8,14 @@ pipeline {
   stages {
     stage('Build') {
       steps {
-        sh '''echo "deb https://mirrors.tuna.tsinghua.edu.cn/debian/ stretch main contrib non-free
-# deb-src https://mirrors.tuna.tsinghua.edu.cn/debian/ stretch main contrib non-free
-deb https://mirrors.tuna.tsinghua.edu.cn/debian/ stretch-updates main contrib non-free
-# deb-src https://mirrors.tuna.tsinghua.edu.cn/debian/ stretch-updates main contrib non-free
-deb https://mirrors.tuna.tsinghua.edu.cn/debian/ stretch-backports main contrib non-free
-# deb-src https://mirrors.tuna.tsinghua.edu.cn/debian/ stretch-backports main contrib non-free
-deb https://mirrors.tuna.tsinghua.edu.cn/debian-security stretch/updates main contrib non-free
-# deb-src https://mirrors.tuna.tsinghua.edu.cn/debian-security stretch/updates main contrib non-free" > /etc/apt/sources.list'''
+        sh '''echo "deb http://mirrors.163.com/debian/ jessie main non-free contrib
+deb http://mirrors.163.com/debian/ jessie-updates main non-free contrib
+deb http://mirrors.163.com/debian/ jessie-backports main non-free contrib
+deb-src http://mirrors.163.com/debian/ jessie main non-free contrib
+deb-src http://mirrors.163.com/debian/ jessie-updates main non-free contrib
+deb-src http://mirrors.163.com/debian/ jessie-backports main non-free contrib
+deb http://mirrors.163.com/debian-security/ jessie/updates main non-free contrib
+deb-src http://mirrors.163.com/debian-security/ jessie/updates main non-free contrib" > /etc/apt/sources.list'''
         sh '''apt update
 apt install -y bison flex'''
         sh '''mkdir build
