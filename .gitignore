@@ -45,3 +45,7 @@ build/
 lib/
 src/gtest
 .vscode
+naivedb
+parse.c
+scan.c
+y.tab.h
