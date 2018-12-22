@@ -47,6 +47,13 @@ public:
         const Value &rhsValue,           // or value to set attr equal to
         int   nConditions,               // # conditions in where clause
         const Condition conditions[]);   // conditions in where clause
+        
+    RC Update (const char *relName,      // relation to update
+        int nColumns,                    // # columns and values in set clause
+        const char* const columnNames[],       // columnNames in set clause
+        const Value values[],            // values in set clause
+        int   nConditions,               // # conditions in where clause
+        const Condition conditions[]);   // conditions in where clause
 
 private:
     template<typename T>
