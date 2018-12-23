@@ -11,6 +11,8 @@
 #include <string.h>
 #include <unistd.h>
 #include <sys/types.h>
+#include <map>
+#include <vector>
 #include "naivedb.h"
 #include "parser_internal.h"
 #include "y.tab.h"
@@ -32,6 +34,7 @@ extern QL_Manager *pQlm;
 #define E_DUPLICATEATTR     -8
 #define E_TOOLONG           -9
 #define E_STRINGTOOLONG     -10
+#define E_NOSUCHATTR        -11
 
 /*
  * file pointer to which error messages are printed
@@ -46,6 +49,7 @@ static int parse_format_string(char *format_string, AttrType *type, int *len);
 static int mk_rel_attrs(NODE *list, int max, RelAttr relAttrs[]);
 static void mk_rel_attr(NODE *node, RelAttr &relAttr);
 static int mk_relations(NODE *list, int max, char *relations[]);
+static int mk_setitems(NODE *list, int max, char* columns[], Value values[]);
 static int mk_conditions(NODE *list, int max, Condition conditions[]);
 static int mk_values(NODE *list, int max, Value values[]);
 static void mk_value(NODE *node, Value &value);
@@ -190,16 +194,23 @@ RC interp(NODE *n)
             int nValues = 0;
             Value values[MAXATTRS];
 
-            /* Make a list of Values suitable for sending to Insert */
-            nValues = mk_values(n->u.INSERT.valuelist, MAXATTRS, values);
-            if(nValues < 0){
-               print_error((char*)"insert", nValues);
-               break;
-            }
+            //TODO: insert all lists at once
+            NODE *valueLists = n->u.INSERT.valuelists;
+            for (; valueLists != NULL; valueLists = valueLists->u.LIST.next)
+            {
+               /* Make a list of Values suitable for sending to Insert */
+               NODE *valueList = valueLists->u.LIST.curr;
+               nValues = 0;
+               nValues = mk_values(valueList, MAXATTRS, values);
+               if(nValues < 0){
+                  print_error((char*)"insert", nValues);
+                  break;
+               }
 
-            /* Make the call to insert */
-            errval = pQlm->Insert(n->u.INSERT.relname,
-                  nValues, values);
+               /* Make the call to insert */
+               errval = pQlm->Insert(n->u.INSERT.relname,
+                     nValues, values);
+            }
             break;
          }   
 
@@ -224,27 +235,19 @@ RC interp(NODE *n)
 
       case N_UPDATE:            /* for Update() */
          {
-            RelAttr relAttr;
-
-            // The RHS can be either a value or an attribute
-            Value rhsValue;
-            RelAttr rhsRelAttr;
-            int bIsValue;
+            int nColumns = 0;
+            char* columns[MAXATTRS];
+            Value rhsValues[MAXATTRS];
 
             int nConditions = 0;
             Condition conditions[MAXATTRS];
 
-            /* Make a RelAttr suitable for sending to Update */
-            mk_rel_attr(n->u.UPDATE.relattr, relAttr);
 
-            struct node *rhs = n->u.UPDATE.relorvalue;
-            if (rhs->u.RELATTR_OR_VALUE.relattr) {
-               mk_rel_attr(rhs->u.RELATTR_OR_VALUE.relattr, rhsRelAttr);
-               bIsValue = 0;
-            } else {
-               /* Make a value suitable for sending to update */
-               mk_value(rhs->u.RELATTR_OR_VALUE.value, rhsValue);
-               bIsValue = 1;
+            nColumns = mk_setitems(n->u.UPDATE.setitemList, MAXATTRS, columns, rhsValues);
+            if (nColumns < 0)
+            {
+               print_error((char*)"update", nConditions);
+               break;
             }
 
             /* Make a list of Conditions suitable for sending to Update */
@@ -254,10 +257,12 @@ RC interp(NODE *n)
                print_error((char*)"update", nConditions);
                break;
             }
-
+            //for (int i = 0; i < nColumns; ++i)
+            //   printf("%s %d\n", columns[i], rhsValues[i].type);
             /* Make the call to update */
-            errval = pQlm->Update(n->u.UPDATE.relname, relAttr, bIsValue, 
-                  rhsRelAttr, rhsValue, nConditions, conditions);
+            /*errval = pQlm->Update(n->u.UPDATE.relname, relAttr, bIsValue, 
+                  rhsRelAttr, rhsValue, nConditions, conditions);*/
+            errval = pQlm->Update(n->u.UPDATE.relname, nColumns, columns, rhsValues, nConditions, conditions);
             break;
          }   
 
@@ -333,6 +338,9 @@ static int mk_attr_infos(NODE *list, int max, AttrInfo attrInfos[])
    NODE *attr;
    //RC errval;
    NODE *typeNode;
+   std::vector<char*> primaryKeyNames;
+   std::map<std::string, int> attrNames;
+   int attrNum = 0;
 
    /* for each element of the list... */
    for(i = 0; list != NULL; ++i, list = list -> u.LIST.next) {
@@ -342,6 +350,17 @@ static int mk_attr_infos(NODE *list, int max, AttrInfo attrInfos[])
          return E_TOOMANY;
 
       attr = list -> u.LIST.curr;
+      if (attr->kind == N_PRIMARYKEY)
+      {
+         NODE *columnList = attr->u.PRIMARYKEY.columnListNode;
+         NODE *column;
+         for (int j = 0; columnList != NULL; ++j, columnList = columnList->u.LIST.next)
+         {
+            column = columnList->u.LIST.curr;
+            primaryKeyNames.push_back(column->u.COLUMN.columnName);
+         }
+         continue;
+      }
 
       /* Make sure the attribute name isn't too long */
       if(strlen(attr -> u.ATTRTYPE.attrname) > MAXNAME)
@@ -353,13 +372,25 @@ static int mk_attr_infos(NODE *list, int max, AttrInfo attrInfos[])
          return errval;*/
 
       /* add it to the list */
-      attrInfos[i].attrName = attr -> u.ATTRTYPE.attrname;
+      attrInfos[attrNum].attrName = attr -> u.ATTRTYPE.attrname;
+      attrNames[std::string(attrInfos[attrNum].attrName)] = attrNum;
       typeNode = attr->u.ATTRTYPE.attrType;
-      attrInfos[i].attrType = typeNode->u.TYPE.attrType;
-      attrInfos[i].attrLength = typeNode->u.TYPE.attrLength;
+      attrInfos[attrNum].attrType = typeNode->u.TYPE.attrType;
+      attrInfos[attrNum].attrLength = typeNode->u.TYPE.attrLength;
+      attrInfos[attrNum].couldBeNULL = attr -> u.ATTRTYPE.couldBeNULL;
+      attrNum++;
    }
-
-   return i;
+   for (auto pkName : primaryKeyNames)
+   {
+      if (attrNames.find(std::string(pkName)) != attrNames.end())
+      {
+         i = attrNames[std::string(pkName)];
+         attrInfos[i].isPrimaryKey = 1;
+      }
+      else
+         return E_NOSUCHATTR;
+   }
+   return attrNum;
 }
 
 /*
@@ -421,6 +452,20 @@ static int mk_relations(NODE *list, int max, char *relations[])
    return i;
 }
 
+static int mk_setitems(NODE *list, int max, char* columns[], Value values[])
+{
+   int i;
+   NODE *current;
+   for(i = 0; list != NULL; ++i, list = list -> u.LIST.next){
+      if(i == max)
+         return E_TOOMANY;
+      current = list -> u.LIST.curr;
+      columns[i] = current -> u.SETITEM.columnName;
+      mk_value(current -> u.SETITEM.valueNode, values[i]);
+   }
+   return i;
+}
+
 /*
  * mk_conditions: converts a list of conditions into an array of conditions
  *
@@ -444,17 +489,38 @@ static int mk_conditions(NODE *list, int max, Condition conditions[])
          current->u.CONDITION.lhsRelattr->u.RELATTR.relname;
       conditions[i].lhsAttr.attrName = 
          current->u.CONDITION.lhsRelattr->u.RELATTR.attrname;
-      conditions[i].op = current->u.CONDITION.op;
-      if (current->u.CONDITION.rhsRelattr) {
-         conditions[i].bRhsIsAttr = TRUE;
-         conditions[i].rhsAttr.relName = 
-            current->u.CONDITION.rhsRelattr->u.RELATTR.relname;
-         conditions[i].rhsAttr.attrName = 
-            current->u.CONDITION.rhsRelattr->u.RELATTR.attrname;
-      }
-      else {
+      if (current->u.CONDITION.isOrNotNULL == 1 || current->u.CONDITION.isOrNotNULL == -1)
+      {
+         conditions[i].op = NO_OP;
          conditions[i].bRhsIsAttr = FALSE;
-         mk_value(current->u.CONDITION.rhsValue, conditions[i].rhsValue);
+         if (current->u.CONDITION.isOrNotNULL == 1)
+         {
+            conditions[i].isNULL = 1;
+            conditions[i].isNotNULL = 0;
+         }
+         else
+         {
+            conditions[i].isNULL = 0;
+            conditions[i].isNotNULL = 1;
+         }
+         //printf("%s %s %d %d\n", conditions[i].lhsAttr.relName, conditions[i].lhsAttr.attrName, conditions[i].isNULL, conditions[i].isNotNULL);
+      }
+      else
+      {
+         conditions[i].op = current->u.CONDITION.op;
+         if (current->u.CONDITION.rhsRelattr) {
+            conditions[i].bRhsIsAttr = TRUE;
+            conditions[i].rhsAttr.relName = 
+               current->u.CONDITION.rhsRelattr->u.RELATTR.relname;
+            conditions[i].rhsAttr.attrName = 
+               current->u.CONDITION.rhsRelattr->u.RELATTR.attrname;
+         }
+         else {
+            conditions[i].bRhsIsAttr = FALSE;
+            mk_value(current->u.CONDITION.rhsValue, conditions[i].rhsValue);
+         }
+         conditions[i].isNULL = 0;
+         conditions[i].isNotNULL = 0;
       }
    }
 
@@ -499,6 +565,9 @@ static void mk_value(NODE *node, Value &value)
          break;
       case STRING:
          value.data = (void *)node->u.VALUE.sval;
+         break;
+      case NULLTYPE:
+         value.data = NULL;
          break;
    }
 }
@@ -619,6 +688,9 @@ static void print_error(char *errmsg, RC errval)
       case E_STRINGTOOLONG:
          fprintf(stderr, "string attribute too long\n");
          break;
+      case E_NOSUCHATTR:
+         fprintf(stderr, "no attributes correspond to the primary key");
+         break;
       default:
          fprintf(ERRFP, "unrecognized errval: %d\n", errval);
    }
@@ -674,7 +746,8 @@ static void echo_query(NODE *n)
          break;
       case N_INSERT:            /* for Insert() */
          printf("insert into %s values ( ",n->u.INSERT.relname);
-         print_values(n -> u.INSERT.valuelist);
+         printf("sth unnotated this print message!!!!!!");
+         //print_values(n -> u.INSERT.valuelist);
          printf(");\n");
          break;
       case N_DELETE:            /* for Delete() */
@@ -688,23 +761,24 @@ static void echo_query(NODE *n)
       case N_UPDATE:            /* for Update() */
          {
             printf("update %s set ",n->u.UPDATE.relname);
-            print_relattr(n->u.UPDATE.relattr);
-            printf(" = ");
-            struct node *rhs = n->u.UPDATE.relorvalue;
-
-            /* The RHS can be either a relation.attribute or a value */
-            if (rhs->u.RELATTR_OR_VALUE.relattr) {
-               /* Print out the relation.attribute */
-               print_relattr(rhs->u.RELATTR_OR_VALUE.relattr);
-            } else {
-               /* Print out the value */
-               print_value(rhs->u.RELATTR_OR_VALUE.value);
-            }
-            if (n->u.UPDATE.conditionlist) {
-               printf("where ");
-               print_conditions(n->u.UPDATE.conditionlist);
-            }
-            printf(";\n");
+            printf("sth unnotated this print message!!!!!!");
+            ////print_relattr(n->u.UPDATE.relattr);
+            //printf(" = ");
+            //struct node *rhs = n->u.UPDATE.relorvalue;
+//
+            ///* The RHS can be either a relation.attribute or a value */
+            //if (rhs->u.RELATTR_OR_VALUE.relattr) {
+            //   /* Print out the relation.attribute */
+            //   print_relattr(rhs->u.RELATTR_OR_VALUE.relattr);
+            //} else {
+            //   /* Print out the value */
+            //   print_value(rhs->u.RELATTR_OR_VALUE.value);
+            //}
+            //if (n->u.UPDATE.conditionlist) {
+            //   printf("where ");
+            //   print_conditions(n->u.UPDATE.conditionlist);
+            //}
+            //printf(";\n");
             break;
          }
       default:   // should never get here
@@ -781,6 +855,9 @@ static void print_value(NODE *n)
          break;
       case STRING:
          printf(" \"%s\"", n -> u.VALUE.sval);
+         break;
+      case NULLTYPE:
+         printf(" NULL");
          break;
    }
 }

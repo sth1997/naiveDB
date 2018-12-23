@@ -17,6 +17,8 @@ struct AttrInfo{
     char     *attrName;   /* attribute name       */
     AttrType attrType;    /* type of attribute    */
     int      attrLength;  /* length of attribute  */
+    int      couldBeNULL = 0;
+    int      isPrimaryKey = 0;
 };
 
 struct RelAttr{
@@ -39,6 +41,8 @@ struct Condition{
                          /* otherwise, rhsValue below is valid.  */
     RelAttr  rhsAttr;    /* right-hand side attribute            */
     Value    rhsValue;   /* right-hand side value                */
+    int      isNULL=0;   /* TRUE if the condition SQL is "lhsAttr IS NULL" */
+    int      isNotNULL=0;/* TRUE if the condition SQL is "lhsAttr IS NOT NULL" */
     friend std::ostream &operator<<(std::ostream &s, const Condition &c);
 };
 

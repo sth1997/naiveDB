@@ -47,6 +47,8 @@ struct DataAttrInfo
         indexNo = -1;
         memset(relName, 0, MAXNAME + 1);
         memset(attrName, 0, MAXNAME + 1);
+        couldBeNULL = 0;
+        isPrimaryKey = 0;
     }
 
     DataAttrInfo(char* buf) // construct DataRelInfo from buf
@@ -62,6 +64,8 @@ struct DataAttrInfo
         indexNo = input_indexNo;
         strcpy(relName, input_relName);
         strcpy(attrName, tmp.attrName);
+        couldBeNULL = tmp.couldBeNULL;
+        isPrimaryKey = tmp.isPrimaryKey;
     }
 
     DataAttrInfo(const DataAttrInfo& tmp)
@@ -78,7 +82,7 @@ struct DataAttrInfo
 
     static int memberNumber()
     {
-        return 6;
+        return 8;
     }
 
     int offset;
@@ -87,6 +91,8 @@ struct DataAttrInfo
     int indexNo; // index number, -1 means no index
     char relName[MAXNAME + 1];
     char attrName[MAXNAME + 1];
+    int couldBeNULL;
+    int isPrimaryKey;
 };
 
 #endif //CATALOG_H

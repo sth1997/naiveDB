@@ -70,7 +70,10 @@ typedef enum{
     N_SHOWDATABASES,
     N_SHOWTABLES,
     N_TYPENODE,
-    N_DESC
+    N_DESC,
+    N_PRIMARYKEY,
+    N_COLUMN,
+    N_SETITEM
 } NODEKIND;
 
 /*
@@ -137,7 +140,7 @@ typedef struct node{
       /* insert node */
       struct{
          char *relname;
-         struct node *valuelist;
+         struct node *valuelists;
       } INSERT;
 
       /* delete node */
@@ -149,8 +152,7 @@ typedef struct node{
       /* update node */
       struct{
          char *relname;
-         struct node *relattr;
-         struct node *relorvalue;
+         struct node *setitemList;
          struct node *conditionlist;
       } UPDATE;
 
@@ -167,6 +169,7 @@ typedef struct node{
          CompOp op;
          struct node *rhsRelattr;
          struct node *rhsValue;
+         int isOrNotNULL; //1 means IS NULL, -1 means IS NOT NULL, 0 means it has right hand side value or attr
       } CONDITION;
 
       /* relation-attribute or value */
@@ -179,6 +182,7 @@ typedef struct node{
       struct{
          char *attrname;
          struct node *attrType;
+         int couldBeNULL;
       } ATTRTYPE;
 
       /* <value, type> pair */
@@ -226,6 +230,23 @@ typedef struct node{
          char *tableName;
       } DESC;
 
+      /* primary key node */
+      struct{
+         struct node* columnListNode;
+      } PRIMARYKEY;
+
+      /* column node */
+      struct
+      {
+         char *columnName;
+      } COLUMN;
+
+      /* setitem node */
+      struct
+      {
+         char *columnName;
+         struct node *valueNode;
+      } SETITEM;
    } u;
 } NODE;
 
@@ -243,15 +264,15 @@ NODE *set_node(char *paramName, char *string);
 NODE *help_node(char *relname);
 NODE *print_node(char *relname);
 NODE *query_node(NODE *relattrlist, NODE *rellist, NODE *conditionlist);
-NODE *insert_node(char *relname, NODE *valuelist);
+NODE *insert_node(char *relname, NODE *valuelists);
 NODE *delete_node(char *relname, NODE *conditionlist);
-NODE *update_node(char *relname, NODE *relattr, NODE *value,
+NODE *update_node(char *relname, NODE *setitemList,
 		  NODE *conditionlist);
 NODE *relattr_node(char *relname, char *attrname);
-NODE *condition_node(NODE *lhsRelattr, CompOp op, NODE *rhsRelattrOrValue);
+NODE *condition_node(NODE *lhsRelattr, CompOp op, NODE *rhsRelattrOrValue, int isOrNotNULL);
 NODE *value_node(AttrType type, void *value);
 NODE *relattr_or_value_node(NODE *relattr, NODE *value);
-NODE *attrtype_node(char *attrname, NODE *type);
+NODE *attrtype_node(char *attrname, NODE *type, int couldBeNULL);
 NODE *relation_node(char *relname);
 NODE *list_node(NODE *n);
 NODE *prepend(NODE *n, NODE *list);
@@ -264,6 +285,9 @@ NODE *type_int_node(int len);
 NODE *type_string_node(int len);
 NODE *type_float_node();
 NODE *desc_node(char *tableName);
+NODE *primarykey_node(NODE *columnList);
+NODE *column_node(char *columnName);
+NODE *setitem_node(char *columnName, NODE *setitemList);
 
 
 void reset_scanner(void);

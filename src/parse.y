@@ -159,6 +159,11 @@ QL_Manager *pQlm;          // QL component manager
       showtables
       type
       desc
+      columnlist
+      column
+      valueLists
+      setclause
+      setitem
 %%
 start
    : command ';'
@@ -389,9 +394,9 @@ query
    }
    ;
 insert
-   : RW_INSERT RW_INTO T_STRING RW_VALUES '(' non_mt_value_list ')'
+   : RW_INSERT RW_INTO T_STRING RW_VALUES valueLists
    {
-      $$ = insert_node($3, $6);
+      $$ = insert_node($3, $5);
    }
    ;
 delete
@@ -401,9 +406,26 @@ delete
    }
    ;
 update
-   : RW_UPDATE T_STRING RW_SET relattr T_EQ relattr_or_value opt_where_clause
+   //: RW_UPDATE T_STRING RW_SET relattr T_EQ relattr_or_value opt_where_clause
+   : RW_UPDATE T_STRING RW_SET setclause opt_where_clause
    {
-      $$ = update_node($2, $4, $6, $7);
+      $$ = update_node($2, $4, $5);
+   }
+   ;
+setclause
+   :  setitem ',' setclause
+   {
+      $$ = prepend($1, $3);
+   }
+   | setitem
+   {
+      $$ = list_node($1);
+   }
+   ;
+setitem
+   : T_STRING T_EQ value
+   {
+      $$ = setitem_node($1, $3);
    }
    ;
 non_mt_attrtype_list
@@ -419,9 +441,32 @@ non_mt_attrtype_list
 attrtype
    : T_STRING type
     {
-      $$ = attrtype_node($1, $2);
+      $$ = attrtype_node($1, $2, 1);
+   }
+   | T_STRING type RW_NOT RW_NULL
+   {
+      $$ = attrtype_node($1, $2, 0);
+   }
+   | RW_PRIMARY RW_KEY '(' columnlist ')'
+   {
+      $$ = primarykey_node($4);
    }
    ;
+columnlist
+   : column ',' columnlist
+   {
+      $$ = prepend($1, $3);
+   }
+   | column
+   {
+      $$ = list_node($1);
+   }
+   ;
+column
+   : T_STRING
+   {
+      $$ = column_node($1);
+   }
 type
    : RW_INT '(' T_INT ')'
    {
@@ -502,7 +547,15 @@ non_mt_cond_list
 condition
    : relattr op relattr_or_value
    {
-      $$ = condition_node($1, $2, $3);
+      $$ = condition_node($1, $2, $3, 0);
+   }
+   | relattr RW_IS RW_NULL
+   {
+      $$ = condition_node($1, NO_OP, NULL, 1);
+   }
+   | relattr RW_IS RW_NOT RW_NULL
+   {
+      $$ = condition_node($1, NO_OP, NULL, -1);
    }
    ;
 relattr_or_value
@@ -513,6 +566,16 @@ relattr_or_value
    | value
    {
       $$ = relattr_or_value_node(NULL, $1);
+   }
+   ;
+valueLists
+   : '(' non_mt_value_list ')' ',' valueLists
+   {
+      $$ = prepend($2, $5);
+   }
+   | '(' non_mt_value_list ')'
+   {
+      $$ = list_node($2);
    }
    ;
 non_mt_value_list
@@ -537,6 +600,10 @@ value
    | T_REAL
    {
       $$ = value_node(FLOAT, (void *)& $1);
+   }
+   | RW_NULL
+   {
+      $$ = value_node(NULLTYPE, NULL);
    }
    ;
 opt_relname
@@ -675,6 +742,9 @@ ostream &operator<<(ostream &s, const Value &v)
       case STRING:
          s << " (char *)data=" << (char *)v.data;
          break;
+      case NULLTYPE:
+         s << " NULL ";
+         break;
    }
    return s;
 }
@@ -716,6 +786,9 @@ ostream &operator<<(ostream &s, const AttrType &at)
          break;
       case STRING:
          s << "STRING";
+         break;
+      case NULLTYPE:
+         s << "NULL";
          break;
    }
    return s;

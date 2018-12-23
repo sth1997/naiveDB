@@ -197,12 +197,12 @@ NODE *query_node(NODE *relattrlist, NODE *rellist, NODE *conditionlist)
  * insert_node: allocates, initializes, and returns a pointer to a new
  * insert node having the indicated values.
  */
-NODE *insert_node(char *relname, NODE *valuelist)
+NODE *insert_node(char *relname, NODE *valuelists)
 {
     NODE *n = newnode(N_INSERT);
 
     n->u.INSERT.relname = relname;
-    n->u.INSERT.valuelist = valuelist;
+    n->u.INSERT.valuelists = valuelists;
     return n;
 }
 
@@ -223,14 +223,13 @@ NODE *delete_node(char *relname, NODE *conditionlist)
  * update_node: allocates, initializes, and returns a pointer to a new
  * update node having the indicated values.
  */
-NODE *update_node(char *relname, NODE *relattr, NODE *relorvalue, 
+NODE *update_node(char *relname, NODE *setitemList, 
 		  NODE *conditionlist)
 {
     NODE *n = newnode(N_UPDATE);
 
     n->u.UPDATE.relname = relname;
-    n->u.UPDATE.relattr = relattr;
-    n->u.UPDATE.relorvalue = relorvalue;
+    n->u.UPDATE.setitemList = setitemList;
     n->u.UPDATE.conditionlist = conditionlist;
     return n;
 }
@@ -253,16 +252,27 @@ NODE *relattr_node(char *relname, char *attrname)
  * condition_node: allocates, initializes, and returns a pointer to a new
  * condition node having the indicated values.
  */
-NODE *condition_node(NODE *lhsRelattr, CompOp op, NODE *rhsRelattrOrValue)
+NODE *condition_node(NODE *lhsRelattr, CompOp op, NODE *rhsRelattrOrValue, int isOrNotNULL)
 {
     NODE *n = newnode(N_CONDITION);
 
     n->u.CONDITION.lhsRelattr = lhsRelattr;
-    n->u.CONDITION.op = op;
-    n->u.CONDITION.rhsRelattr = 
-      rhsRelattrOrValue->u.RELATTR_OR_VALUE.relattr;
-    n->u.CONDITION.rhsValue = 
-      rhsRelattrOrValue->u.RELATTR_OR_VALUE.value;
+    if (isOrNotNULL == 1 || isOrNotNULL == -1)
+    {
+        n->u.CONDITION.op = NO_OP;
+        n->u.CONDITION.rhsRelattr = NULL;
+        n->u.CONDITION.rhsValue = NULL;
+        n->u.CONDITION.isOrNotNULL = isOrNotNULL;
+    }
+    else
+    {
+        n->u.CONDITION.op = op;
+        n->u.CONDITION.rhsRelattr = 
+        rhsRelattrOrValue->u.RELATTR_OR_VALUE.relattr;
+        n->u.CONDITION.rhsValue = 
+        rhsRelattrOrValue->u.RELATTR_OR_VALUE.value;
+        n->u.CONDITION.isOrNotNULL = 0;
+    }
     return n;
 }
 
@@ -285,6 +295,8 @@ NODE *value_node(AttrType type, void *value)
     case STRING:
       n->u.VALUE.sval = (char *)value;
       break;
+    case NULLTYPE:
+      break;
     }
     return n;
 }
@@ -306,12 +318,13 @@ NODE *relattr_or_value_node(NODE *relattr, NODE *value)
  * attrtype_node: allocates, initializes, and returns a pointer to a new
  * attrtype node having the indicated values.
  */
-NODE *attrtype_node(char *attrname, NODE *type)
+NODE *attrtype_node(char *attrname, NODE *type, int couldBeNULL)
 {
     NODE *n = newnode(N_ATTRTYPE);
 
     n -> u.ATTRTYPE.attrname = attrname;
     n -> u.ATTRTYPE.attrType = type;
+    n -> u.ATTRTYPE.couldBeNULL = couldBeNULL;
     return n;
 }
 
@@ -418,5 +431,27 @@ NODE *desc_node(char *tableName)
 {
     NODE *n = newnode(N_DESC);
     n->u.DESC.tableName = tableName;
+    return n;
+}
+
+NODE *primarykey_node(NODE *columnList)
+{
+    NODE *n = newnode(N_PRIMARYKEY);
+    n->u.PRIMARYKEY.columnListNode = columnList;
+    return n;
+}
+
+NODE *column_node(char *columnName)
+{
+    NODE *n = newnode(N_COLUMN);
+    n->u.COLUMN.columnName = columnName;
+    return n;
+}
+
+NODE *setitem_node(char *columnName, NODE *valueNode)
+{
+    NODE *n = newnode(N_SETITEM);
+    n->u.SETITEM.columnName = columnName;
+    n->u.SETITEM.valueNode = valueNode;
     return n;
 }
