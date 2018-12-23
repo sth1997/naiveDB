@@ -183,12 +183,15 @@ RC QL_Manager::Select(int nSelAttrs, const RelAttr selAttrs[],
                 return rc;
             }
             changedSelAttrs.push_back(RelAttr());
-            changedSelAttrs[i].relName = strdup(selAttrs[i].relName);
             changedSelAttrs[i].attrName = strdup(selAttrs[i].attrName);
             if (selAttrs[i].relName == NULL) {
                 string attrname(selAttrs[i].attrName);
                 string relname = *(attr2rels[attrname].begin());
                 changedSelAttrs[i].relName = strdup(relname.c_str());
+            }
+            else
+            {
+                changedSelAttrs[i].relName = strdup(selAttrs[i].relName);
             }
         }
     }
@@ -353,7 +356,6 @@ RC QL_Manager::Select(int nSelAttrs, const RelAttr selAttrs[],
                                     linfo = rinfo;
                                     rinfo = tmp;
                                 }
-                                char* pData;
                                 switch (linfo.attrType) {
                                     case INT: {
                                         int lvalue;
@@ -392,8 +394,12 @@ RC QL_Manager::Select(int nSelAttrs, const RelAttr selAttrs[],
                     }
                 }
             }
+            delete []pData;
             p.PrintFooter(cout);
         }
+        for (int i = 0; i < 2; ++i)
+            for (auto x : res[i])
+                delete []x;
     } else {
         // index scan
     }
@@ -417,7 +423,11 @@ RC QL_Manager::Select(int nSelAttrs, const RelAttr selAttrs[],
         for (i = 0; i < nConditions; i++)
             cout << "   conditions[" << i << "]:" << conditions[i] << "\n";
     }
-
+    for (auto x : changedSelAttrs)
+    {
+        free(x.relName);
+        free(x.attrName);
+    }
     return OK_RC;
 }
 
@@ -477,6 +487,7 @@ RC QL_Manager::Insert(const char *relName,
         p.Print(cout, recData);
         p.PrintFooter(cout);
     }
+    delete []recData;
 
     // TODO
     // insert into index

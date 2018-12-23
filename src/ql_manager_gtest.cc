@@ -24,6 +24,9 @@ protected:
             string rn = "testRel"+ to_string(i);
             ASSERT_EQ(smm.CreateTable(rn.c_str(), i, attrs), OK_RC);
         }
+        for (int i = 0; i < nAttrs; i++) {
+            delete []attrs[i].attrName;
+        }
     }
 
     virtual void TearDown() {
