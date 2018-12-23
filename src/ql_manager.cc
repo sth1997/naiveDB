@@ -633,7 +633,6 @@ RC QL_Manager::Update(const char *relName,
                       int nConditions, const Condition conditions[])
 {
     RC rc;
-    RID rid;
     vector<DataAttrInfo> attributes;
     map<string, DataAttrInfo> attr2info;
     CHECK_NOZERO(sm_mgr->FindAllAttrs(relName, attributes));
@@ -655,6 +654,7 @@ RC QL_Manager::Update(const char *relName,
     // check each condition
     for (int i = 0; i < nConditions; i++) {
         bool found;
+        RID rid;
         DataAttrInfo dataAttrInfo;
         CHECK_NOZERO(sm_mgr->FindAttr(conditions[i].lhsAttr.relName, conditions[i].lhsAttr.attrName, dataAttrInfo, rid, found));
         AttrType lhsType = dataAttrInfo.attrType;
@@ -743,7 +743,6 @@ RC QL_Manager::Update(const char *relName,
             if (matched) {
                 char* tmp;
                 rec.GetData(tmp);
-                rec.GetRid(rid);
                 string lrname(updAttr.relName);
                 string laname(updAttr.attrName);
                 DataAttrInfo linfo = attr2info[lrname+"."+laname];
@@ -755,7 +754,6 @@ RC QL_Manager::Update(const char *relName,
                     DataAttrInfo rinfo = attr2info[rrname+"."+raname];
                     memcpy(tmp+linfo.offset, tmp+rinfo.offset, rinfo.attrLength);
                 }
-                rec.SetData(tmp, rec.GetRecordSize(), rid);
                 rm_fhdl.UpdateRec(rec);
             }
         }
@@ -794,7 +792,6 @@ RC QL_Manager::Update(const char *relName,
                       int nConditions, const Condition conditions[])
 {
     RC rc;
-    RID rid;
     vector<DataAttrInfo> attributes;
     map<string, DataAttrInfo> attr2info;
     CHECK_NOZERO(sm_mgr->FindAllAttrs(relName, attributes));
@@ -804,6 +801,7 @@ RC QL_Manager::Update(const char *relName,
     // check each condition
     for (int i = 0; i < nConditions; i++) {
         bool found;
+        RID rid;
         DataAttrInfo dataAttrInfo;
         CHECK_NOZERO(sm_mgr->FindAttr(conditions[i].lhsAttr.relName, conditions[i].lhsAttr.attrName, dataAttrInfo, rid, found));
         AttrType lhsType = dataAttrInfo.attrType;
@@ -892,14 +890,12 @@ RC QL_Manager::Update(const char *relName,
             if (matched) {
                 char* tmp;
                 rec.GetData(tmp);
-                rec.GetRid(rid);
                 for (int i = 0; i < nColumns; i++) {
                     string lrname(relName);
                     string laname(columnNames[i]);
                     DataAttrInfo linfo = attr2info[lrname+"."+laname];
                     memcpy(tmp+linfo.offset, values[i].data, linfo.attrLength);
                 }
-                rec.SetData(tmp, rec.GetRecordSize(), rid);
                 rm_fhdl.UpdateRec(rec);
             }
         }
