@@ -269,7 +269,7 @@ RC SM_Manager::FindRel(const char* relName, DataRelInfo& rel, RID& rid, bool& fo
 
 // Find the attribute named attrName which belongs to the relation named relName
 // If not found, set found = false
-RC SM_Manager::FindAttr(const char* relName, const char* attrName, DataAttrInfo& attrinfo, RID& rid, bool& found)
+RC SM_Manager::FindAttr(const char* relName, const char* attrName, DataAttrInfo& attrinfo, RID& rid, bool& found, int* attrNo)
 {
     found = false;
     RC rc;
@@ -279,7 +279,8 @@ RC SM_Manager::FindAttr(const char* relName, const char* attrName, DataAttrInfo&
         return SM_DBNOTOPEN;
 
     RM_FileScan scan;
-    CHECK_NONZERO(scan.OpenScan(attrcat, STRING, MAXNAME + 1, offsetof(DataAttrInfo, attrName), EQ_OP, (void*) attrName));
+    CHECK_NONZERO(scan.OpenScan(attrcat, STRING, MAXNAME + 1, offsetof(DataAttrInfo, relName), EQ_OP, (void*) relName));
+    int number = 0;
 
     RM_Record record;
     rc = scan.GetNextRec(record);
@@ -289,14 +290,17 @@ RC SM_Manager::FindAttr(const char* relName, const char* attrName, DataAttrInfo&
             return rc;
         DataAttrInfo* attrpointer;
         CHECK_NONZERO(record.GetData((char*&) attrpointer));
-        if (strcmp(attrpointer->relName, relName) == 0)
+        if (strcmp(attrpointer->attrName, attrName) == 0)
         {
             found = true;
             attrinfo = *attrpointer;
             CHECK_NONZERO(record.GetRid(rid));
+            if (attrNo != NULL)
+                *attrNo = number;
             break;
         }
         rc = scan.GetNextRec(record);
+        number++;
     }
     CHECK_NONZERO(scan.CloseScan());
     return OK_RC; // whatever found or not
@@ -368,6 +372,7 @@ RC SM_Manager::CheckAttr(const char* relName, const char* attrName, bool& found)
 
 //check whether the relation or attribute of the left hand side or right hand side exists
 // If they all exist, but the types of them mismatched, the "found" is also set false.
+//TODO ADD NULL CHECK
 RC SM_Manager::CheckCond(const Condition& cond, bool& found)
 {
     found = false;
@@ -517,6 +522,7 @@ RC SM_Manager::CreateTable(const char* relName, int attrCount, AttrInfo* attribu
             return SM_BADTABLEPARA;
         }
     }
+    totalLength += (attrCount + 7) / 8; // for null bit vector
 
     for (int i = 0; i < attrCount; ++i)
         CHECK_NONZERO((attrcat.InsertRec((char*) &attrinfo[i], rid)));
@@ -578,11 +584,17 @@ RC SM_Manager::CreateIndex(const char* relName, const char* attrName)
     CHECK_NONZERO(ValidName(attrName));
     if (!DBOpen)
         return SM_DBNOTOPEN;
-    
-    DataAttrInfo attrinfo;
+
+    DataRelInfo relinfo;
     RID rid;
     bool found = false;
-    CHECK_NONZERO(FindAttr(relName, attrName, attrinfo, rid, found));
+    CHECK_NONZERO(FindRel(relName, relinfo, rid, found));
+    if (!found)
+        return SM_NOSUCHATTR;
+    
+    DataAttrInfo attrinfo;
+    int attrNo;
+    CHECK_NONZERO(FindAttr(relName, attrName, attrinfo, rid, found, &attrNo));
     if (!found)
         return SM_NOSUCHATTR;
     if (attrinfo.indexNo != -1)
@@ -611,7 +623,16 @@ RC SM_Manager::CreateIndex(const char* relName, const char* attrName)
         char* data;
         CHECK_NONZERO(record.GetData(data));
         CHECK_NONZERO(record.GetRid(rid));
-        indexHandle.InsertEntry(data + attrinfo.offset, rid);
+        // only insert the nonnull record
+        if (attrinfo.couldBeNULL == 0)
+            indexHandle.InsertEntry(data + attrinfo.offset, rid);
+        else if (attrinfo.couldBeNULL == 1)
+        {
+            bool isNull;
+            CHECK_NONZERO(record.IsNull(relinfo, attrNo, isNull));
+            if (!isNull)
+                indexHandle.InsertEntry(data + attrinfo.offset, rid);
+        }
         rc = scan.GetNextRec(record);
     }
 

@@ -39,3 +39,32 @@ RC RM_Record::GetRid(RID &rid) const
     rid = this->rid;
     return OK_RC;
 }
+
+RC RM_Record::IsNull(const DataRelInfo& relinfo, int bitPos, bool& isNull) const
+{
+    if (relinfo.recordSize != this->recordSize)
+        return RM_RECORDSIZEMISMATCH;
+    int offset = relinfo.recordSize - (relinfo.attrCount + 7) / 8;
+    RM_BitMap bitmap((relinfo.attrCount + 7) / 8, data + offset);
+    RC rc = bitmap.isFree(bitPos, isNull);
+    return rc;
+}
+
+RC RM_Record::SetNull(const DataRelInfo& relinfo, int bitPos)
+{
+    if (relinfo.recordSize != this->recordSize)
+        return RM_RECORDSIZEMISMATCH;
+    int offset = relinfo.recordSize - (relinfo.attrCount + 7) / 8;
+    RM_BitMap bitmap((relinfo.attrCount + 7) / 8, data + offset);
+    RC rc = bitmap.set(bitPos, true);
+    return rc;
+}
+
+RC RM_Record::SetNotNull(const DataRelInfo& relinfo, int bitPos)
+{
+    if (relinfo.recordSize != this->recordSize)
+        return RM_RECORDSIZEMISMATCH;
+    int offset = relinfo.recordSize - (relinfo.attrCount + 7) / 8;
+    RM_BitMap bitmap((relinfo.attrCount + 7) / 8, data + offset);
+    RC rc = bitmap.set(bitPos, false);
+}

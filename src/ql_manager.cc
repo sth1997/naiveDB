@@ -448,6 +448,7 @@ RC QL_Manager::Insert(const char *relName,
     for (auto d : dataAttrInfos) {
         recLength += d.attrLength;
     }
+    recLength += (dataAttrInfos.size() + 7) / 8;
     char* recData = new char[recLength];
     memset(recData, 0, recLength);
     for (int i = 0; i < nValues; i++) {

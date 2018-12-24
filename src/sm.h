@@ -27,15 +27,15 @@ public:
     RC FindAllAttrs(const char* relName, std::vector<DataAttrInfo>& attrs);
     RC CheckRel(const char* relName, bool& found);
     RC CheckAttr(const char* relName, const char* attrName, bool& found);
-    RC CheckCond(const Condition& cond, bool& found);
     RC FindRelForAttr(RelAttr& attr, int numRel, const char* const possibleRels[]);
     RC IsAttrIndexed(const char* relName, const char* attrName, bool& indexed);
     RC DBOpened() { return DBOpen; }
     RC FindRel(const char* relName, DataRelInfo& rel, RID& rid, bool& found);
-    RC FindAttr(const char* relName, const char* attrName, DataAttrInfo& attrinfo, RID& rid, bool& found);
+    RC FindAttr(const char* relName, const char* attrName, DataAttrInfo& attrinfo, RID& rid, bool& found, int* attrNo = NULL);
     RC ValidName(const char* name) const;
     void PrintAttrType(AttrType AttrType);
 private:
+    RC CheckCond(const Condition& cond, bool& found);
     RM_Manager& rmm;
     IX_Manager& ixm;
     RM_FileHandle attrcat; // catalog for attributes

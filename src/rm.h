@@ -4,6 +4,7 @@
 #include "naivedb.h"
 #include "rid.h"
 #include "pf.h"
+#include "catalog.h"
 #include <cstring>
 #include <string>
 
@@ -54,6 +55,9 @@ public:
     RC GetData    (char *&pData) const;
     RC GetRid     (RID &rid) const;
     int GetRecordSize () { return recordSize; }
+    RC IsNull(const DataRelInfo& relinfo, int bitPos, bool& isNull) const __wur;
+    RC SetNull(const DataRelInfo& relinfo, int bitPos) __wur;
+    RC SetNotNull(const DataRelInfo& relinfo, int bitPos) __wur;
 private:
     char* data;
     int recordSize;
@@ -165,7 +169,8 @@ void RM_PrintError(RC rc);
 #define RM_INSERTNULLDATA           (START_RM_ERR - 8)  // insert null data
 #define RM_SHOULDNOTCREATEPAGE      (START_RM_ERR - 9)  // should not create new page, because fileheader.firstFree != -1
 #define RM_WRONGINLIST              (START_RM_ERR - 10) // there is something wrong with the free page list
-#define RM_PFERROR              (START_RM_ERR - 11)  // error occur in pf
+#define RM_RECORDSIZEMISMATCH       (START_RM_ERR - 11) // the record size mismatch
+#define RM_PFERROR              (START_RM_ERR - 12)  // error occur in pf
 #define RM_LASTERROR            RM_PFERROR
 
 #endif
