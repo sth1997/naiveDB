@@ -8,6 +8,7 @@ protected:
     }
     virtual void SetUp() {
         nAttrs = 3;
+        nRecords = 3;
         AttrInfo attrs[nAttrs];
         for (int i = 0; i < nAttrs; i++) {
             attrs[i].attrLength = 4;
@@ -15,6 +16,7 @@ protected:
             string an = "attr" + to_string(i);
             strcpy(attrs[i].attrName, an.c_str());
             attrs[i].attrType = INT;
+            attrs[i].couldBeNULL = i % 2 == 0 ? true : false;
         }
         system("rm -rf test");
         ASSERT_EQ(smm.CreateDb("test"), OK_RC);
@@ -50,7 +52,7 @@ protected:
     IX_Manager ixm;
     SM_Manager smm;
     QL_Manager qmm;
-    int nAttrs;
+    int nAttrs, nRecords;
 };
 
 TEST_F(QL_ManagerTest, Insert) {
@@ -77,10 +79,10 @@ TEST_F(QL_ManagerTest, Insert) {
 
 TEST_F(QL_ManagerTest, Select) {
     int ptrs[nAttrs];
-    for (int i = 0; i <= nAttrs; i++) {
+    for (int i = 0; i < nAttrs; i++) {
         ptrs[i] = i;
     }
-    for (int i = 1; i <= 10; i++) {
+    for (int i = 1; i <= nRecords; i++) {
         ptrs[0] = i;
         insert(nAttrs, ptrs);
     }
@@ -112,10 +114,10 @@ TEST_F(QL_ManagerTest, Select) {
 
 TEST_F(QL_ManagerTest, SelectStar) {
     int ptrs[nAttrs];
-    for (int i = 0; i <= nAttrs; i++) {
+    for (int i = 0; i < nAttrs; i++) {
         ptrs[i] = i;
     }
-    for (int i = 1; i <= 10; i++) {
+    for (int i = 1; i <= nRecords; i++) {
         ptrs[0] = i;
         insert(nAttrs, ptrs);
     }
@@ -138,14 +140,14 @@ TEST_F(QL_ManagerTest, SelectStar) {
 
 TEST_F(QL_ManagerTest, SelectJoin) {
     int ptrs[nAttrs];
-    for (int i = 0; i <= nAttrs; i++) {
+    for (int i = 0; i < nAttrs; i++) {
         ptrs[i] = i * 2;
     }
-    for (int i = 1; i <= 4; i++) {
+    for (int i = 1; i <= nRecords; i++) {
         ptrs[0] = i;
         insert(nAttrs, ptrs);
     }
-    for (int i = 1; i <= 4; i++) {
+    for (int i = 1; i <= nRecords; i++) {
         ptrs[0] = i;
         insert(nAttrs - 1, ptrs);
     }
@@ -170,10 +172,10 @@ TEST_F(QL_ManagerTest, SelectJoin) {
 
 TEST_F(QL_ManagerTest, Delete) {
     int ptrs[nAttrs];
-    for (int i = 0; i <= nAttrs; i++) {
+    for (int i = 0; i < nAttrs; i++) {
         ptrs[i] = i;
     }
-    for (int i = 1; i <= 10; i++) {
+    for (int i = 1; i <= nRecords; i++) {
         ptrs[0] = i;
         insert(nAttrs, ptrs);
     }
@@ -199,10 +201,10 @@ TEST_F(QL_ManagerTest, Delete) {
 
 TEST_F(QL_ManagerTest, Update) {
     int ptrs[nAttrs];
-    for (int i = 0; i <= nAttrs; i++) {
+    for (int i = 0; i < nAttrs; i++) {
         ptrs[i] = i;
     }
-    for (int i = 1; i <= 10; i++) {
+    for (int i = 1; i <= nRecords; i++) {
         ptrs[0] = i;
         insert(nAttrs, ptrs);
     }
@@ -236,10 +238,10 @@ TEST_F(QL_ManagerTest, Update) {
 
 TEST_F(QL_ManagerTest, UpdateBatch) {
     int ptrs[nAttrs];
-    for (int i = 0; i <= nAttrs; i++) {
+    for (int i = 0; i < nAttrs; i++) {
         ptrs[i] = i;
     }
-    for (int i = 1; i <= 10; i++) {
+    for (int i = 1; i <= nRecords; i++) {
         ptrs[0] = i;
         insert(nAttrs, ptrs);
     }
@@ -269,4 +271,61 @@ TEST_F(QL_ManagerTest, UpdateBatch) {
     relations[0] = "testRel3";
     nConditions = 0;
     ASSERT_EQ(qmm.Select(nSelAttrs, selAttrs, nRelations, relations, nConditions, conditions), OK_RC);
+}
+
+TEST_F(QL_ManagerTest, InsertNULL) {
+    Value values[nAttrs];
+    int ptrs[nAttrs];
+    for (int i = 0; i < nAttrs; i++) {
+        ptrs[i] = i;
+        values[i].data = &ptrs[i];
+        values[i].type = INT;
+    }
+    ASSERT_EQ(qmm.Insert("testRel3", nAttrs, values), OK_RC);
+    values[0].type = NULLTYPE;
+    ASSERT_EQ(qmm.Insert("testRel3", nAttrs, values), OK_RC);
+    values[1].type = NULLTYPE;
+    ASSERT_EQ(qmm.Insert("testRel3", nAttrs, values), QL_ATTR_CANT_BE_NULL);
+}
+
+TEST_F(QL_ManagerTest, SelectNULL) {
+    int ptrs[nAttrs];
+    Value values[nAttrs];
+
+    for (int i = 0; i < nAttrs; i++) {
+        ptrs[i] = i;
+    }
+    for (int i = 1; i <= nRecords; i++) {
+        ptrs[0] = i;
+        insert(nAttrs, ptrs);
+    }
+    for (int i = 0; i < nAttrs; i++) {
+        values[i].data = &ptrs[i];
+        values[i].type = INT;
+    }
+
+    values[0].type = NULLTYPE;
+    ASSERT_EQ(qmm.Insert("testRel3", nAttrs, values), OK_RC);
+
+    int nSelAttrs = 1;
+    RelAttr selAttrs[1];
+    selAttrs[0].attrName = "*";
+    int nRelations = 1;
+    char* relations[1];
+    relations[0] = "testRel3";
+    int nConditions = 1;
+    Condition conditions[2];
+    conditions[0].lhsAttr.relName = "testRel3";
+    conditions[0].lhsAttr.attrName = "attr0";
+    conditions[0].isNULL = true;
+    conditions[0].isNotNULL = false;
+
+    ASSERT_EQ(qmm.Select(nSelAttrs, selAttrs, nRelations, relations, nConditions, conditions), OK_RC);
+
+    conditions[0].isNULL = false;
+    conditions[0].isNotNULL = true;
+
+    ASSERT_EQ(qmm.Select(nSelAttrs, selAttrs, nRelations, relations, nConditions, conditions), OK_RC);
+
+    
 }

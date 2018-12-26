@@ -469,7 +469,6 @@ RC SM_Manager::FindRelForAttr(RelAttr& attr, int numRel, const char* const possi
 
 RC SM_Manager::CreateTable(const char* relName, int attrCount, AttrInfo* attributes)
 {
-    printf("attrCount = %d\n", attrCount);
     RC rc;
     CHECK_NONZERO(ValidName(relName));
     if (!DBOpen)

@@ -83,7 +83,8 @@ void QL_PrintError(RC rc);
 #define QL_INCOMPATIBLE_TYPE       (START_QL_WARN + 8) // condition type incompatible
 #define QL_EOF                     (START_QL_WARN + 9) // ql eof
 #define QL_NOT_SUPPORT_MULTI_JOIN_NOW (START_QL_WARN + 10) // ql didn't support multi join
-#define QL_LASTWARN                QL_NOT_SUPPORT_MULTI_JOIN_NOW
+#define QL_ATTR_CANT_BE_NULL       (START_QL_WARN + 11)
+#define QL_LASTWARN                QL_ATTR_CANT_BE_NULL
 
 // Errors
 #define QL_INVALID_DATABASE_NAME   (START_QL_ERR  - 0) // Invalid database file name

@@ -55,9 +55,9 @@ public:
     RC GetData    (char *&pData) const;
     RC GetRid     (RID &rid) const;
     int GetRecordSize () { return recordSize; }
-    RC IsNull(const DataRelInfo& relinfo, int bitPos, bool& isNull) const __wur;
-    RC SetNull(const DataRelInfo& relinfo, int bitPos) __wur;
-    RC SetNotNull(const DataRelInfo& relinfo, int bitPos) __wur;
+    RC IsNull(const DataRelInfo& relinfo, int bitPos, bool& isNull) const;
+    RC SetNull(const DataRelInfo& relinfo, int bitPos);
+    RC SetNotNull(const DataRelInfo& relinfo, int bitPos);
 private:
     char* data;
     int recordSize;
