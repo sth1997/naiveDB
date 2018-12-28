@@ -363,3 +363,51 @@ TEST_F(QL_ManagerTest, DeleteNULL) {
     ASSERT_EQ(qmm.Delete(relations[0], nConditions, conditions), OK_RC);
     ASSERT_EQ(qmm.Select(nSelAttrs, selAttrs, nRelations, relations, nConditions, conditions), OK_RC);
 }
+
+TEST_F(QL_ManagerTest, UpdateNULL) {
+    int ptrs[nAttrs];
+    Value values[nAttrs];
+
+    for (int i = 0; i < nAttrs; i++) {
+        ptrs[i] = i;
+    }
+    for (int i = 1; i <= nRecords; i++) {
+        ptrs[0] = i;
+        insert(nAttrs, ptrs);
+    }
+    for (int i = 0; i < nAttrs; i++) {
+        values[i].data = &ptrs[i];
+        values[i].type = INT;
+    }
+
+    values[0].type = NULLTYPE;
+    ASSERT_EQ(qmm.Insert("testRel3", nAttrs, values), OK_RC);
+
+    int nSelAttrs = 1;
+    RelAttr selAttrs[1];
+    selAttrs[0].attrName = "*";
+    char* relName = "testRel3";
+    int nColumns = 2;
+    char* columnNames[2] = {"attr0", "attr1"};
+    Value rhsValue[2];
+    int a = 5;
+    rhsValue[0].data = &a;
+    rhsValue[0].type = INT;
+    rhsValue[1].data = &a;
+    rhsValue[1].type = INT;
+    int nRelations = 1;
+    char* relations[1];
+    relations[0] = "testRel3";
+    int nConditions = 1;
+    Condition conditions[2];
+    conditions[0].lhsAttr.relName = "testRel3";
+    conditions[0].lhsAttr.attrName = "attr0";
+    conditions[0].isNULL = true;
+    conditions[0].isNotNULL = false;
+    ASSERT_EQ(qmm.Select(nSelAttrs, selAttrs, nRelations, relations, nConditions, conditions), OK_RC);
+    ASSERT_EQ(qmm.Update(relName, nColumns, columnNames, rhsValue, nConditions, conditions), OK_RC);
+    ASSERT_EQ(qmm.Select(nSelAttrs, selAttrs, nRelations, relations, nConditions, conditions), OK_RC);
+    conditions[0].isNULL = false;
+    conditions[0].isNotNULL = true;
+    ASSERT_EQ(qmm.Select(nSelAttrs, selAttrs, nRelations, relations, nConditions, conditions), OK_RC);
+}
