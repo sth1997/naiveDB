@@ -22,7 +22,7 @@ class Printer {
 public:
     // Constructor.  Takes as arguments an array of attributes along with
     // the length of the array.
-    Printer(std::vector<DataAttrInfo> attributes, const int attrCount);
+    Printer(SM_Manager &smm, std::vector<DataAttrInfo> attributes, const int attrCount, std::vector<std::vector<DataAttrInfo> > all_attributes);
     ~Printer();
 
     void PrintHeader(std::ostream &c) const;
@@ -38,6 +38,7 @@ public:
 
 private:
     DataAttrInfo *attributes;
+    std::vector<std::vector<DataAttrInfo> > allAttributes;
     int attrCount;
 
     // An array of strings for the header information
@@ -47,6 +48,8 @@ private:
 
     // The number of tuples printed
     int iCount;
+
+    SM_Manager* sm_mgr;
 };
 
 

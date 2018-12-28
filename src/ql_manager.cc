@@ -149,7 +149,7 @@ RC QL_Manager::Select(int nSelAttrs, const RelAttr selAttrs[],
     vector<string> relnames;
     map<string, int> relsCnt;
     vector<DataRelInfo> dataRelInfos;
-    vector<DataAttrInfo> attributes[nRelations];
+    vector<vector<DataAttrInfo>> attributes;
     int allAttrCnt = 0;
     map<string, DataAttrInfo> attr2info;
     map<string, set<string>> attr2rels;
@@ -170,7 +170,9 @@ RC QL_Manager::Select(int nSelAttrs, const RelAttr selAttrs[],
         if (!found) {
             return QL_RELATION_NOT_FOUND;
         }
-        CHECK_NOZERO(sm_mgr->FindAllAttrs(relations[i], attributes[i]));
+        vector<DataAttrInfo> tmp;
+        CHECK_NOZERO(sm_mgr->FindAllAttrs(relations[i], tmp));
+        attributes.push_back(tmp);
         // construct attr2rels
         for (auto attr : attributes[i]) {
             string attrname(attr.attrName);
@@ -375,7 +377,7 @@ RC QL_Manager::Select(int nSelAttrs, const RelAttr selAttrs[],
             rm_fscan.CloseScan();
         }
         if (nRelations == 1) {
-            Printer p(changedSelAttrInfo, changedSelAttrInfo.size());
+            Printer p(*sm_mgr, changedSelAttrInfo, changedSelAttrInfo.size(), attributes);
             p.PrintHeader(cout);
             for (auto r : res[0]) {
                 p.Print(cout, r);
@@ -384,7 +386,7 @@ RC QL_Manager::Select(int nSelAttrs, const RelAttr selAttrs[],
         }
         // cross-products
         if (nRelations == 2) {
-            Printer p(changedSelAttrInfo, changedSelAttrInfo.size());
+            Printer p(*sm_mgr, changedSelAttrInfo, changedSelAttrInfo.size(), attributes);
             p.PrintHeader(cout);
             char* pData = new char[dataRelInfos[0].recordSize + dataRelInfos[1].recordSize];
             for (unsigned i = 0; i < res[0].size(); i++) {
@@ -541,8 +543,10 @@ RC QL_Manager::Insert(const char *relName,
 
     bool printResult = false;
     if (printResult) {
+        vector<vector<DataAttrInfo> > allAdataAttrInfos;
+        allAdataAttrInfos.push_back(dataAttrInfos);
         cout << "Insert tuple:" << endl;
-        Printer p(dataAttrInfos, dataAttrInfos.size());
+        Printer p(*sm_mgr, dataAttrInfos, dataAttrInfos.size(), allAdataAttrInfos);
         p.PrintHeader(cout);
         p.Print(cout, recData);
         p.PrintFooter(cout);

@@ -11,6 +11,7 @@
 #include <vector>
 #include "printer.h"
 #include "rm.h"
+#include "sm.h"
 
 using namespace std;
 
@@ -39,13 +40,16 @@ void Spaces(int maxLength, int printedSoFar)
 //      within sm.h
 //  attrCount - the number of attributes
 //
-Printer::Printer(vector<DataAttrInfo> attributes_, const int attrCount_)
+Printer::Printer(SM_Manager &smm, vector<DataAttrInfo> attributes_, const int attrCount_, vector<vector<DataAttrInfo> > allAttributes_)
 {
+    sm_mgr = &smm;
     attrCount = attrCount_;
     attributes = new DataAttrInfo[attrCount];
 
     for (int i=0; i < attrCount; i++)
         attributes[i] = attributes_[i];
+    
+    allAttributes = allAttributes_;
 
     // Number of tuples printed
     iCount = 0;
@@ -224,78 +228,89 @@ void Printer::Print(ostream &c, const void * const data[])
 void Printer::Print(ostream &c, const char * const data)
 {
     char str[MAXPRINTSTRING], strSpace[50];
-    int i, a;
+    int a;
     float b;
 
-    // init bitmap
-    int numBytes = (attrCount + 7) / 8;
-    DataAttrInfo last = attributes[attrCount - 1];
-    int recLength = 0;
-    for (int i = 0; i < attrCount; i++) {
-        recLength += attributes[i].attrLength;
-    }
-    recLength += numBytes;
+    for (auto oneAttributes : allAttributes) {
+        // init bitmap
+        int numBytes = (oneAttributes.size() + 7) / 8;
+        DataAttrInfo last = oneAttributes.back();
+        int recLength = 0;
+        for (auto attr : oneAttributes) {
+            recLength += attr.attrLength;
+        }
+        recLength += numBytes;
 
-    char* tmp = new char[recLength];
-    memcpy(tmp, data, recLength);
-    RM_BitMap bitmap(numBytes, tmp + last.offset + last.attrLength);
+        char* tmp = new char[recLength];
+        memcpy(tmp, data, recLength);
+        RM_BitMap bitmap(numBytes, tmp + last.offset + last.attrLength);
 
-    if (data == NULL)
-        return;
+        if (data == NULL)
+            return;
 
-    // Increment the number of tuples printed
-    iCount++;
+        // Increment the number of tuples printed
+        iCount++;
 
-    for (i = 0; i<attrCount; i++) {
-        bool isNull = false;
-        bitmap.isFree(i, isNull);
-        if (isNull) {
-            c << "NULL";
-            if (strlen(psHeader[i]) < 12)
-                Spaces(12, strlen("NULL"));
-            else
-                Spaces(strlen(psHeader[i]), strlen(strSpace));
-        } else {
-            if (attributes[i].attrType == STRING) {
-                // We will only print out the first MAXNAME+10 characters of
-                // the string value.
-                memset(str,0,MAXPRINTSTRING);
+        for (auto attr : oneAttributes) {
+            for (unsigned i = 0; i<attrCount; i++) {
+                if (strcmp(attr.relName, attributes[i].relName) == 0 && strcmp(attr.attrName, attributes[i].attrName) == 0) {
+                    int pos;
+                    DataAttrInfo tmp;
+                    bool tmpf;
+                    RID rid;
+                    sm_mgr->FindAttr(attributes[i].relName, attributes[i].attrName, tmp, rid, tmpf, &pos);
+                    bool isNull = false;
+                    bitmap.isFree(pos, isNull);
+                    if (isNull) {
+                        c << "NULL";
+                        if (strlen(psHeader[i]) < 12)
+                            Spaces(12, strlen("NULL"));
+                        else
+                            Spaces(strlen(psHeader[i]), strlen(strSpace));
+                    } else {
+                        if (attributes[i].attrType == STRING) {
+                            // We will only print out the first MAXNAME+10 characters of
+                            // the string value.
+                            memset(str,0,MAXPRINTSTRING);
 
-                if (attributes[i].attrLength>MAXPRINTSTRING) {
-                    strncpy(str, data+attributes[i].offset, MAXPRINTSTRING-1);
-                    str[MAXPRINTSTRING-3] ='.';
-                    str[MAXPRINTSTRING-2] ='.';
-                    c << str;
-                    Spaces(MAXPRINTSTRING, strlen(str));
-                } else {
-                    strncpy(str, data+attributes[i].offset, attributes[i].attrLength);
-                    c << str;
-                    if (attributes[i].attrLength < (int) strlen(psHeader[i]))
-                        Spaces(strlen(psHeader[i]), strlen(str));
-                    else
-                        Spaces(attributes[i].attrLength, strlen(str));
+                            if (attributes[i].attrLength>MAXPRINTSTRING) {
+                                strncpy(str, data+attributes[i].offset, MAXPRINTSTRING-1);
+                                str[MAXPRINTSTRING-3] ='.';
+                                str[MAXPRINTSTRING-2] ='.';
+                                c << str;
+                                Spaces(MAXPRINTSTRING, strlen(str));
+                            } else {
+                                strncpy(str, data+attributes[i].offset, attributes[i].attrLength);
+                                c << str;
+                                if (attributes[i].attrLength < (int) strlen(psHeader[i]))
+                                    Spaces(strlen(psHeader[i]), strlen(str));
+                                else
+                                    Spaces(attributes[i].attrLength, strlen(str));
+                            }
+                        }
+                        if (attributes[i].attrType == INT) {
+                            memcpy (&a, (data+attributes[i].offset), sizeof(int));
+                            sprintf(strSpace, "%d",a);
+                            c << a;
+                            if (strlen(psHeader[i]) < 12)
+                                Spaces(12, strlen(strSpace));
+                            else
+                                Spaces(strlen(psHeader[i]), strlen(strSpace));
+                        }
+                        if (attributes[i].attrType == FLOAT) {
+                            memcpy (&b, (data+attributes[i].offset), sizeof(float));
+                            sprintf(strSpace, "%f",b);
+                            c << strSpace;
+                            if (strlen(psHeader[i]) < 12)
+                                Spaces(12, strlen(strSpace));
+                            else
+                                Spaces(strlen(psHeader[i]), strlen(strSpace));
+                        }
+                    }
                 }
             }
-            if (attributes[i].attrType == INT) {
-                memcpy (&a, (data+attributes[i].offset), sizeof(int));
-                sprintf(strSpace, "%d",a);
-                c << a;
-                if (strlen(psHeader[i]) < 12)
-                    Spaces(12, strlen(strSpace));
-                else
-                    Spaces(strlen(psHeader[i]), strlen(strSpace));
-            }
-            if (attributes[i].attrType == FLOAT) {
-                memcpy (&b, (data+attributes[i].offset), sizeof(float));
-                sprintf(strSpace, "%f",b);
-                c << strSpace;
-                if (strlen(psHeader[i]) < 12)
-                    Spaces(12, strlen(strSpace));
-                else
-                    Spaces(strlen(psHeader[i]), strlen(strSpace));
-            }
         }
-
     }
+
     c << "\n";
 }
