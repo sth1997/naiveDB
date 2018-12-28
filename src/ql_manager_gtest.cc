@@ -326,6 +326,40 @@ TEST_F(QL_ManagerTest, SelectNULL) {
     conditions[0].isNotNULL = true;
 
     ASSERT_EQ(qmm.Select(nSelAttrs, selAttrs, nRelations, relations, nConditions, conditions), OK_RC);
+}
 
-    
+TEST_F(QL_ManagerTest, DeleteNULL) {
+    int ptrs[nAttrs];
+    Value values[nAttrs];
+
+    for (int i = 0; i < nAttrs; i++) {
+        ptrs[i] = i;
+    }
+    for (int i = 1; i <= nRecords; i++) {
+        ptrs[0] = i;
+        insert(nAttrs, ptrs);
+    }
+    for (int i = 0; i < nAttrs; i++) {
+        values[i].data = &ptrs[i];
+        values[i].type = INT;
+    }
+
+    values[0].type = NULLTYPE;
+    ASSERT_EQ(qmm.Insert("testRel3", nAttrs, values), OK_RC);
+
+    int nSelAttrs = 1;
+    RelAttr selAttrs[1];
+    selAttrs[0].attrName = "*";
+    int nRelations = 1;
+    char* relations[1];
+    relations[0] = "testRel3";
+    int nConditions = 1;
+    Condition conditions[2];
+    conditions[0].lhsAttr.relName = "testRel3";
+    conditions[0].lhsAttr.attrName = "attr0";
+    conditions[0].isNULL = true;
+    conditions[0].isNotNULL = false;
+    ASSERT_EQ(qmm.Select(nSelAttrs, selAttrs, nRelations, relations, nConditions, conditions), OK_RC);
+    ASSERT_EQ(qmm.Delete(relations[0], nConditions, conditions), OK_RC);
+    ASSERT_EQ(qmm.Select(nSelAttrs, selAttrs, nRelations, relations, nConditions, conditions), OK_RC);
 }
