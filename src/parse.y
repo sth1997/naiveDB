@@ -724,12 +724,16 @@ ostream &operator<<(ostream &s, const RelAttr &qa)
 }
 ostream &operator<<(ostream &s, const Condition &c)
 {
-   s << "\n      lhsAttr:" << c.lhsAttr << "\n"
-      << "      op=" << c.op << "\n";
-   if (c.bRhsIsAttr)
-      s << "      bRhsIsAttr=TRUE \n      rhsAttr:" << c.rhsAttr;
-   else
-      s << "      bRshIsAttr=FALSE\n      rhsValue:" << c.rhsValue;
+   s << "\n      lhsAttr:" << c.lhsAttr << "\n";
+   if (c.isNULL || c.isNotNULL) {
+      s << (c.isNULL ? "NULL" : "not NULL");
+   } else {
+      s  << "      op=" << c.op << "\n";
+      if (c.bRhsIsAttr)
+         s << "      bRhsIsAttr=TRUE \n      rhsAttr:" << c.rhsAttr;
+      else
+         s << "      bRshIsAttr=FALSE\n      rhsValue:" << c.rhsValue;
+   }
    return s;
 }
 ostream &operator<<(ostream &s, const Value &v)
