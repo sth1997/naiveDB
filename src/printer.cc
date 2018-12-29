@@ -310,6 +310,7 @@ void Printer::Print(ostream &c, const char * const data)
                 }
             }
         }
+        delete[] tmp;
     }
 
     c << "\n";

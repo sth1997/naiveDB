@@ -508,6 +508,7 @@ RC QL_Manager::Insert(const char *relName,
     for (int i = 0; i < nValues; i++) {
         if (values[i].type == NULLTYPE) {
             if (!dataAttrInfos[i].couldBeNULL) {
+                delete[] recData;
                 return QL_ATTR_CANT_BE_NULL;
             }
             bitmap.set(i, true);
