@@ -124,6 +124,7 @@ TEST_F(QL_ManagerTest, SelectStar) {
     int nSelAttrs = 1;
     RelAttr selAttrs[1];
     selAttrs[0].attrName = "*";
+    selAttrs[0].relName = NULL;
     int nRelations = 1;
     char* relations[1];
     relations[0] = "testRel3";
@@ -154,6 +155,7 @@ TEST_F(QL_ManagerTest, SelectJoin) {
     int nSelAttrs = 1;
     RelAttr selAttrs[1];
     selAttrs[0].attrName = "*";
+    selAttrs[0].relName = NULL;
     int nRelations = 2;
     char* relations[2];
     relations[0] = "testRel3";
@@ -192,6 +194,7 @@ TEST_F(QL_ManagerTest, Delete) {
     int nSelAttrs = 1;
     RelAttr selAttrs[1];
     selAttrs[0].attrName = "*";
+    selAttrs[0].relName = NULL;
     int nRelations = 1;
     char* relations[1];
     relations[0] = "testRel3";
@@ -310,6 +313,7 @@ TEST_F(QL_ManagerTest, SelectNULL) {
     int nSelAttrs = 1;
     RelAttr selAttrs[1];
     selAttrs[0].attrName = "*";
+    selAttrs[0].relName = NULL;
     int nRelations = 1;
     char* relations[1];
     relations[0] = "testRel3";
@@ -350,6 +354,7 @@ TEST_F(QL_ManagerTest, DeleteNULL) {
     int nSelAttrs = 1;
     RelAttr selAttrs[1];
     selAttrs[0].attrName = "*";
+    selAttrs[0].relName = NULL;
     int nRelations = 1;
     char* relations[1];
     relations[0] = "testRel3";
@@ -386,6 +391,7 @@ TEST_F(QL_ManagerTest, UpdateNULL) {
     int nSelAttrs = 1;
     RelAttr selAttrs[1];
     selAttrs[0].attrName = "*";
+    selAttrs[0].relName = NULL;
     char* relName = "testRel3";
     int nColumns = 2;
     char* columnNames[2] = {"attr0", "attr1"};
