@@ -495,6 +495,9 @@ RC QL_Manager::Insert(const char *relName,
     // get attr length from rel
     vector<DataAttrInfo> dataAttrInfos;
     sm_mgr->FindAllAttrs(relName, dataAttrInfos);
+    if (dataAttrInfos.size() != nValues) {
+        return QL_INCONSISTENT_VALUE_AMOUNT;
+    }
     DataAttrInfo last = dataAttrInfos[dataAttrInfos.size() - 1];
 
     // insert into rm file

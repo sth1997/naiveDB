@@ -75,6 +75,13 @@ TEST_F(QL_ManagerTest, Insert) {
         ASSERT_EQ(tmp, ptrs[i]);
     }
     ASSERT_EQ(rm_fscan.GetNextRec(rec), RM_EOF);
+    int n = 4;
+    Value values[n];
+    for (int i = 0; i < n; i++) {
+        values[i].data = &ptrs[i];
+        values[i].type = INT;
+    }
+    ASSERT_EQ(qmm.Insert("testRel3", n, values), QL_INCONSISTENT_VALUE_AMOUNT);
 }
 
 TEST_F(QL_ManagerTest, Select) {
