@@ -715,9 +715,12 @@ ostream &operator<<(ostream &s, const AttrInfo &ai)
 }
 ostream &operator<<(ostream &s, const RelAttr &qa)
 {
-   return
-      s << (qa.relName ? qa.relName : "NULL")
-      << "." << qa.attrName;
+   if (string(qa.attrName) == "*") {
+      s << "*";
+   } else {
+      s << qa.relName << "." << qa.attrName;
+   }
+   return s;
 }
 ostream &operator<<(ostream &s, const Condition &c)
 {
