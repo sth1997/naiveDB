@@ -491,6 +491,7 @@ RC SM_Manager::CreateTable(const char* relName, int attrCount, AttrInfo* attribu
     attrNames.clear();
     DataAttrInfo* attrinfo = new DataAttrInfo[attrCount];
     int totalLength = 0;
+    int numPrimaryKey = 0;
     for (int i = 0; i < attrCount; ++i)
     {
         if (attributes[i].attrType == INT || attributes[i].attrType == FLOAT)
@@ -511,6 +512,15 @@ RC SM_Manager::CreateTable(const char* relName, int attrCount, AttrInfo* attribu
         }
         else
             return SM_BADTABLEPARA;
+        if (attributes[i].isPrimaryKey)
+        {
+            numPrimaryKey++;
+            if (numPrimaryKey > 1)
+                {
+                    delete []attrinfo;
+                    return SM_BADTABLEPARA;
+                }
+        }
         attrinfo[i] = DataAttrInfo(attributes[i], totalLength, -1, relName);
         totalLength += attrinfo[i].attrLength;
         if (attrNames.find(string(attrinfo[i].attrName)) == attrNames.end())
@@ -525,7 +535,6 @@ RC SM_Manager::CreateTable(const char* relName, int attrCount, AttrInfo* attribu
 
     for (int i = 0; i < attrCount; ++i)
         CHECK_NONZERO((attrcat.InsertRec((char*) &attrinfo[i], rid)));
-    delete []attrinfo;
 
     CHECK_NONZERO(rmm.CreateFile(relName, totalLength));
     DataRelInfo relinfo;
@@ -533,6 +542,11 @@ RC SM_Manager::CreateTable(const char* relName, int attrCount, AttrInfo* attribu
     relinfo.recordSize = totalLength;
     strcpy(relinfo.relName, relName);
     CHECK_NONZERO(relcat.InsertRec((char*) &relinfo, rid));
+
+    for (int i = 0; i < attrCount; ++i)
+        if (attrinfo[i].isPrimaryKey)
+            CHECK_NONZERO(CreateIndex(attrinfo[i].relName, attrinfo[i].attrName));
+    delete []attrinfo;
     return OK_RC;
 }
 
