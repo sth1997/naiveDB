@@ -13,6 +13,13 @@ RM_Record::~RM_Record()
     }
 }
 
+RM_Record::RM_Record(const RM_Record& r) {
+    data = new char[r.recordSize];
+    memcpy(data, r.data, r.recordSize);
+    recordSize = r.recordSize;
+    rid = r.rid;
+}
+
 RC RM_Record::SetData(char* data, int recordSize, const RID& rid)
 {
     if (this->data)

@@ -49,8 +49,8 @@ class RM_Record {
 public:
     RM_Record  ();
     ~RM_Record ();
-    RM_Record(const RM_Record& r) = delete;
-    RM_Record& operator = (const RM_Record& r) = delete;
+    RM_Record(const RM_Record& r);
+    RM_Record& operator = (const RM_Record& r);
     RC SetData    (char* data, int recordSize, const RID& rid);
     RC GetData    (char *&pData) const;
     RC GetRid     (RID &rid) const;

@@ -61,6 +61,8 @@ private:
     RC CheckAttr(RelAttr attr,
         std::map<std::string,std::set<std::string> > &attr2rels,
         std::map<std::string, int> &relsCnt);
+    RC RM_GetRecords(const char* const relation, int nConditions, const Condition conditions[], std::vector<RM_Record>& rm_records);
+
     RM_Manager* rm_mgr;          // RM_Manager object
     IX_Manager* ix_mgr;          // IX_Manager object
     SM_Manager* sm_mgr;          // SM_Manager object

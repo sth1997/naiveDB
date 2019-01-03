@@ -21,6 +21,7 @@
 #include "ix.h"
 #include "rm.h"
 #include "printer.h"
+#include "ql_internal.h"
 
 using namespace std;
 
@@ -102,6 +103,142 @@ bool QL_Manager::matchValue(CompOp op, T lValue, T rValue) {
             break;
     }
     return false;
+}
+
+
+RC QL_Manager::RM_GetRecords(const char* const relation, int nConditions, const Condition conditions[], vector<RM_Record>& rm_records) {
+
+    // find dataRelInfo
+    RC rc;
+    DataRelInfo dataRelInfo;
+    RID rid;
+    bool found;
+    sm_mgr->FindRel(relation, dataRelInfo, rid, found);
+
+    // find dataAttrInfos, build map fomr name to dataAttrInfo
+    vector<DataAttrInfo> dataAttrInfos;
+    map<string, DataAttrInfo> attr2info;
+    sm_mgr->FindAllAttrs(relation, dataAttrInfos);
+    for (auto attr : dataAttrInfos) {
+        attr2info[string(attr.relName)+"."+string(attr.attrName)] = attr;
+    }
+    
+    RM_FileHandle rm_fhdl;
+    rm_mgr->OpenFile(relation, rm_fhdl);
+    RM_FileScan rm_fscan;
+    int a = 0;
+    rm_fscan.OpenScan(rm_fhdl, INT, 4, 0, NO_OP, &a);
+    RM_Record rec;
+    char* pData;
+    string relname(relation);
+    DataAttrInfo last = dataAttrInfos.back();
+    int numBytes = (dataRelInfo.attrCount + 7) / 8;
+
+    // scan every record
+    while (rm_fscan.GetNextRec(rec) == OK_RC) {
+        rec.GetData(pData);
+        bool matched = true;
+
+        // init bitmap
+        char* c = pData + last.offset + last.attrLength;
+        RM_BitMap bitmap(numBytes, c);
+
+        // check every conditions
+        for (int j = 0; j < nConditions; j++) {
+            // skip if not this rel
+            string lrname(conditions[j].lhsAttr.relName);
+            string laname(conditions[j].lhsAttr.attrName);
+            DataAttrInfo linfo = attr2info[lrname+"."+laname];
+
+            if (lrname != relname) {
+                continue;
+            }
+
+            int pos;
+            DataAttrInfo tmp;
+            bool tmpf;
+            RID rid;
+            sm_mgr->FindAttr(conditions[j].lhsAttr.relName, conditions[j].lhsAttr.attrName, tmp, rid, tmpf, &pos);
+            bool isNull = false;
+            bitmap.isFree(pos, isNull);
+            if (!conditions[j].isNULL && !conditions[j].isNotNULL) {
+                if (isNull) {
+                    matched = false;
+                } else {
+                    if (conditions[j].bRhsIsAttr) {
+                        string rrname(conditions[j].rhsAttr.relName);
+                        if (rrname != relname) {
+                            continue;
+                        }
+                    }
+                    switch(linfo.attrType) {
+                        case INT: {
+                            int lvalue;
+                            memcpy(&lvalue, pData+linfo.offset, linfo.attrLength);
+                            int rvalue;
+                            if (conditions[j].bRhsIsAttr) {
+                                string rrname(conditions[j].rhsAttr.relName);
+                                string raname(conditions[j].rhsAttr.attrName);
+                                DataAttrInfo rinfo = attr2info[rrname+"."+raname];
+                                memcpy(&rvalue, pData+rinfo.offset, rinfo.attrLength);
+                            } else {
+                                memcpy(&rvalue, conditions[j].rhsValue.data, 4);
+                            }
+                            matched = matchValue(conditions[j].op, lvalue, rvalue);
+                            break;
+                        }
+                        case FLOAT: {
+                            float lvalue;
+                            memcpy(&lvalue, pData+linfo.offset, linfo.attrLength);
+                            float rvalue;
+                            if (conditions[j].bRhsIsAttr) {
+                                string rrname(conditions[j].rhsAttr.relName);
+                                string raname(conditions[j].rhsAttr.attrName);
+                                DataAttrInfo rinfo = attr2info[rrname+"."+raname];
+                                memcpy(&rvalue, pData+rinfo.offset, rinfo.attrLength);
+                            } else {
+                                memcpy(&rvalue, conditions[j].rhsValue.data, 4);
+                            }
+                            matched = matchValue(conditions[j].op, lvalue, rvalue);
+                            break;
+                        }
+                        case STRING: {
+                            string lvalue;
+                            memcpy(&lvalue, pData+linfo.offset, linfo.attrLength);
+                            string rvalue;
+                            if (conditions[j].bRhsIsAttr) {
+                                string rrname(conditions[j].rhsAttr.relName);
+                                string raname(conditions[j].rhsAttr.attrName);
+                                DataAttrInfo rinfo = attr2info[rrname+"."+raname];
+                                memcpy(&rvalue, pData+rinfo.offset, rinfo.attrLength);
+                            } else {
+                                memcpy(&rvalue, conditions[j].rhsValue.data, linfo.attrLength);
+                            }
+                            matched = matchValue(conditions[j].op, lvalue, rvalue);
+                            break;
+                        }
+                        default: {
+                            ;
+                        }
+                    }
+                }
+            } else {
+                if (conditions[j].isNULL) {
+                    matched = isNull ? true : false;
+                } else {
+                    matched = isNull ? false : true;
+                }
+            }
+            if (!matched) {
+                break;
+            }
+        }
+        if (matched) {
+            rm_records.push_back(rec);
+        }
+    }
+    rm_fscan.CloseScan();
+    rm_mgr->CloseFile(rm_fhdl);
 }
 
 //
@@ -259,122 +396,15 @@ RC QL_Manager::Select(int nSelAttrs, const RelAttr selAttrs[],
         vector<char*> res[2];
         // scan every file
         for (int i = 0; i < nRelations; i++) {
-            string relname(relations[i]);
-            RM_FileHandle rm_fhdl;
-            rm_mgr->OpenFile(relations[i], rm_fhdl);
-            RM_FileScan rm_fscan;
-            int a = 0;
-            rm_fscan.OpenScan(rm_fhdl, INT, 4, 0, NO_OP, &a);
-            RM_Record rec;
+            vector<RM_Record> records;
+            RM_GetRecords(relations[i], nConditions, conditions, records);
             char* pData;
-            // scan every record
-            while (rm_fscan.GetNextRec(rec) == OK_RC) {
-                rec.GetData(pData);
-                bool matched = true;
-
-                // init bitmap
-                int numBytes = (dataRelInfos[i].attrCount + 7) / 8;
-                DataAttrInfo last = attributes[i][attributes[i].size() - 1];
-                char* c = pData + last.offset + last.attrLength;
-                RM_BitMap bitmap(numBytes, c);
-
-                // check every conditions
-                for (int j = 0; j < nConditions; j++) {
-                    // skip if not this rel
-                    string lrname(conditions[j].lhsAttr.relName);
-                    string laname(conditions[j].lhsAttr.attrName);
-                    DataAttrInfo linfo = attr2info[lrname+"."+laname];
-
-                    if (lrname != relname) {
-                        continue;
-                    }
-
-                    int pos;
-                    DataAttrInfo tmp;
-                    bool tmpf;
-                    RID rid;
-                    sm_mgr->FindAttr(conditions[j].lhsAttr.relName, conditions[j].lhsAttr.attrName, tmp, rid, tmpf, &pos);
-                    bool isNull = false;
-                    bitmap.isFree(pos, isNull);
-                    if (!conditions[j].isNULL && !conditions[j].isNotNULL) {
-                        if (isNull) {
-                            matched = false;
-                        } else {
-                            if (conditions[j].bRhsIsAttr) {
-                                string rrname(conditions[j].rhsAttr.relName);
-                                if (rrname != relname) {
-                                    continue;
-                                }
-                            }
-                            switch(linfo.attrType) {
-                                case INT: {
-                                    int lvalue;
-                                    memcpy(&lvalue, pData+linfo.offset, linfo.attrLength);
-                                    int rvalue;
-                                    if (conditions[j].bRhsIsAttr) {
-                                        string rrname(conditions[j].rhsAttr.relName);
-                                        string raname(conditions[j].rhsAttr.attrName);
-                                        DataAttrInfo rinfo = attr2info[rrname+"."+raname];
-                                        memcpy(&rvalue, pData+rinfo.offset, rinfo.attrLength);
-                                    } else {
-                                        memcpy(&rvalue, conditions[j].rhsValue.data, 4);
-                                    }
-                                    matched = matchValue(conditions[j].op, lvalue, rvalue);
-                                    break;
-                                }
-                                case FLOAT: {
-                                    float lvalue;
-                                    memcpy(&lvalue, pData+linfo.offset, linfo.attrLength);
-                                    float rvalue;
-                                    if (conditions[j].bRhsIsAttr) {
-                                        string rrname(conditions[j].rhsAttr.relName);
-                                        string raname(conditions[j].rhsAttr.attrName);
-                                        DataAttrInfo rinfo = attr2info[rrname+"."+raname];
-                                        memcpy(&rvalue, pData+rinfo.offset, rinfo.attrLength);
-                                    } else {
-                                        memcpy(&rvalue, conditions[j].rhsValue.data, 4);
-                                    }
-                                    matched = matchValue(conditions[j].op, lvalue, rvalue);
-                                    break;
-                                }
-                                case STRING: {
-                                    string lvalue;
-                                    memcpy(&lvalue, pData+linfo.offset, linfo.attrLength);
-                                    string rvalue;
-                                    if (conditions[j].bRhsIsAttr) {
-                                        string rrname(conditions[j].rhsAttr.relName);
-                                        string raname(conditions[j].rhsAttr.attrName);
-                                        DataAttrInfo rinfo = attr2info[rrname+"."+raname];
-                                        memcpy(&rvalue, pData+rinfo.offset, rinfo.attrLength);
-                                    } else {
-                                        memcpy(&rvalue, conditions[j].rhsValue.data, linfo.attrLength);
-                                    }
-                                    matched = matchValue(conditions[j].op, lvalue, rvalue);
-                                    break;
-                                }
-                                default: {
-                                    ;
-                                }
-                            }
-                        }
-                    } else {
-                        if (conditions[j].isNULL) {
-                            matched = isNull ? true : false;
-                        } else {
-                            matched = isNull ? false : true;
-                        }
-                    }
-                    if (!matched) {
-                        break;
-                    }
-                }
-                if (matched) {
-                    char* tmp = new char[rec.GetRecordSize()];
-                    memcpy(tmp, pData, rec.GetRecordSize());
-                    res[i].push_back(tmp);
-                }
+            for (int j = 0; j < records.size(); j++) {
+                records[j].GetData(pData);
+                char* tmp = new char[records[j].GetRecordSize()];
+                memcpy(tmp, pData, records[j].GetRecordSize());
+                res[i].push_back(tmp);
             }
-            rm_fscan.CloseScan();
         }
         if (nRelations == 1) {
             Printer p(*sm_mgr, changedSelAttrInfo, changedSelAttrInfo.size(), attributes);
@@ -452,8 +482,6 @@ RC QL_Manager::Select(int nSelAttrs, const RelAttr selAttrs[],
         for (int i = 0; i < 2; ++i)
             for (auto x : res[i])
                 delete []x;
-    } else {
-        // index scan
     }
 
     for (auto x : changedSelAttrs)
@@ -545,6 +573,16 @@ RC QL_Manager::Insert(const char *relName,
     CHECK_NOZERO(rm_fhdl.InsertRec(recData, rid));
     rm_mgr->CloseFile(rm_fhdl);
 
+    // insert into index
+    IX_IndexHandle ix_ihdl;
+    for (int i = 0; i < nValues; i++) {
+        if (dataAttrInfos[i].indexNo != -1) {
+            ix_mgr->OpenIndex(relName, i, ix_ihdl);
+            ix_ihdl.InsertEntry(values[i].data, rid);
+            ix_mgr->CloseIndex(ix_ihdl);
+        }
+    }
+
     bool printResult = false;
     if (printResult) {
         vector<vector<DataAttrInfo> > allAdataAttrInfos;
@@ -557,9 +595,6 @@ RC QL_Manager::Insert(const char *relName,
     }
     delete []recData;
 
-    // TODO
-    // insert into index
-
     return OK_RC;
 }
 
@@ -571,12 +606,6 @@ RC QL_Manager::Delete(const char *relName,
 {
     RC rc;
     RID rid;
-    vector<DataAttrInfo> singleAttributes;
-    map<string, DataAttrInfo> attr2info;
-    CHECK_NOZERO(sm_mgr->FindAllAttrs(relName, singleAttributes));
-    for (auto attr : singleAttributes) {
-        attr2info[string(attr.relName)+"."+string(attr.attrName)] = attr;
-    }
     // check each condition
     for (int i = 0; i < nConditions; i++) {
         bool found;
@@ -597,115 +626,18 @@ RC QL_Manager::Delete(const char *relName,
             return QL_INCOMPATIBLE_TYPE;
         }
     }
-    bool optimize = false;
-    if (!optimize) {
-        RM_FileHandle rm_fhdl;
-        rm_mgr->OpenFile(relName, rm_fhdl);
-        RM_FileScan rm_fscan;
-        int a = 0;
-        rm_fscan.OpenScan(rm_fhdl, INT, 4, 0, NO_OP, &a);
-        RM_Record rec;
-        char* pData;
-        // scan every record
-        while (rm_fscan.GetNextRec(rec) == OK_RC) {
-            rec.GetData(pData);
-            bool matched = true;
 
-            // init bitmap
-            int numBytes = (singleAttributes.size() + 7) / 8;
-            DataAttrInfo last = singleAttributes.back();
-            char* c = pData + last.offset + last.attrLength;
-            RM_BitMap bitmap(numBytes, c);
-            for (int i = 0; i < nConditions; i++) {
-                string lrname(conditions[i].lhsAttr.relName);
-                string laname(conditions[i].lhsAttr.attrName);
-                DataAttrInfo linfo = attr2info[lrname+"."+laname];
-
-                int pos;
-                DataAttrInfo tmp;
-                bool tmpf;
-                RID rid;
-                sm_mgr->FindAttr(conditions[i].lhsAttr.relName, conditions[i].lhsAttr.attrName, tmp, rid, tmpf, &pos);
-                bool isNull = false;
-                bitmap.isFree(pos, isNull);
-
-                if (!conditions[i].isNULL && !conditions[i].isNotNULL) {
-                    if (isNull) {
-                        matched = false;
-                    } else {
-                        switch(linfo.attrType) {
-                            case INT: {
-                                int lvalue;
-                                memcpy(&lvalue, pData+linfo.offset, linfo.attrLength);
-                                int rvalue;
-                                if (conditions[i].bRhsIsAttr) {
-                                    string rrname(conditions[i].rhsAttr.relName);
-                                    string raname(conditions[i].rhsAttr.attrName);
-                                    DataAttrInfo rinfo = attr2info[rrname+"."+raname];
-                                    memcpy(&rvalue, pData+rinfo.offset, rinfo.attrLength);
-                                } else {
-                                    memcpy(&rvalue, conditions[i].rhsValue.data, 4);
-                                }
-                                matched = matchValue(conditions[i].op, lvalue, rvalue);
-                                break;
-                            }
-                            case FLOAT: {
-                                float lvalue;
-                                memcpy(&lvalue, pData+linfo.offset, linfo.attrLength);
-                                float rvalue;
-                                if (conditions[i].bRhsIsAttr) {
-                                    string rrname(conditions[i].rhsAttr.relName);
-                                    string raname(conditions[i].rhsAttr.attrName);
-                                    DataAttrInfo rinfo = attr2info[rrname+"."+raname];
-                                    memcpy(&rvalue, pData+rinfo.offset, rinfo.attrLength);
-                                } else {
-                                    memcpy(&rvalue, conditions[i].rhsValue.data, 4);
-                                }
-                                matched = matchValue(conditions[i].op, lvalue, rvalue);
-                                break;
-                            }
-                            case STRING: {
-                                string lvalue;
-                                memcpy(&lvalue, pData+linfo.offset, linfo.attrLength);
-                                string rvalue;
-                                if (conditions[i].bRhsIsAttr) {
-                                    string rrname(conditions[i].rhsAttr.relName);
-                                    string raname(conditions[i].rhsAttr.attrName);
-                                    DataAttrInfo rinfo = attr2info[rrname+"."+raname];
-                                    memcpy(&rvalue, pData+rinfo.offset, rinfo.attrLength);
-                                } else {
-                                    memcpy(&rvalue, conditions[i].rhsValue.data, linfo.attrLength);
-                                }
-                                matched = matchValue(conditions[i].op, lvalue, rvalue);
-                                break;
-                            }
-                            default: {
-                                ;
-                            }
-                        }
-                    }
-                } else {
-                    if (conditions[i].isNULL) {
-                        matched = isNull ? true : false;
-                    } else {
-                        matched = isNull ? false : true;
-                    }
-                }
-
-                if (!matched) {
-                    break;
-                }
-            }
-            if (matched) {
-                rec.GetRid(rid);
-                rm_fhdl.DeleteRec(rid);
-            }
-        }
-        rm_fscan.CloseScan();
-        rm_mgr->CloseFile(rm_fhdl);
-    } else {
-
+    vector<RM_Record> records;
+    RM_GetRecords(relName, nConditions, conditions, records);
+    
+    RM_FileHandle rm_fhdl;
+    rm_mgr->OpenFile(relName, rm_fhdl);
+    for (int i = 0; i < records.size(); i++) {
+        records[i].GetRid(rid);
+        rm_fhdl.DeleteRec(rid);
     }
+    rm_mgr->CloseFile(rm_fhdl);
+
     bool printPara = true;
     if (printPara) {
         int i;
@@ -729,13 +661,21 @@ RC QL_Manager::Update(const char *relName,
                       const Value values[],
                       int nConditions, const Condition conditions[])
 {
+    // find dataRelInfo
     RC rc;
-    vector<DataAttrInfo> singleAttributes;
+    DataRelInfo dataRelInfo;
+    RID rid;
+    bool found;
+    sm_mgr->FindRel(relName, dataRelInfo, rid, found);
+
+    // find dataAttrInfos, build map fomr name to dataAttrInfo
+    vector<DataAttrInfo> dataAttrInfos;
     map<string, DataAttrInfo> attr2info;
-    CHECK_NOZERO(sm_mgr->FindAllAttrs(relName, singleAttributes));
-    for (auto attr : singleAttributes) {
+    sm_mgr->FindAllAttrs(relName, dataAttrInfos);
+    for (auto attr : dataAttrInfos) {
         attr2info[string(attr.relName)+"."+string(attr.attrName)] = attr;
     }
+
     // check each condition
     for (int i = 0; i < nConditions; i++) {
         bool found;
@@ -757,129 +697,41 @@ RC QL_Manager::Update(const char *relName,
             return QL_INCOMPATIBLE_TYPE;
         }
     }
-    bool optimize = false;
-    if (!optimize) {
-        RM_FileHandle rm_fhdl;
-        rm_mgr->OpenFile(relName, rm_fhdl);
-        RM_FileScan rm_fscan;
-        int a = 0;
-        rm_fscan.OpenScan(rm_fhdl, INT, 4, 0, NO_OP, &a);
-        RM_Record rec;
-        char* pData;
-        // scan every record
-        while (rm_fscan.GetNextRec(rec) == OK_RC) {
-            rec.GetData(pData);
-            bool matched = true;
-            // init bitmap
-            int numBytes = (singleAttributes.size() + 7) / 8;
-            DataAttrInfo last = singleAttributes.back();
-            char* c = pData + last.offset + last.attrLength;
-            RM_BitMap bitmap(numBytes, c);
+    
+    vector<RM_Record> rm_records;
+    RM_FileHandle rm_fhdl;
+    rm_mgr->OpenFile(relName, rm_fhdl);
+    RM_GetRecords(relName, nConditions, conditions, rm_records);
+    DataAttrInfo last = dataAttrInfos.back();
+    int numBytes = (dataRelInfo.attrCount + 7) / 8;
+    
+    for (int i = 0; i < rm_records.size(); i++) {
+        char* tmp;
+        rm_records[i].GetData(tmp);
 
-            for (int i = 0; i < nConditions; i++) {
-                string lrname(conditions[i].lhsAttr.relName);
-                string laname(conditions[i].lhsAttr.attrName);
-                DataAttrInfo linfo = attr2info[lrname+"."+laname];
+        // init bitmap
+        char* c = tmp + last.offset + last.attrLength;
+        RM_BitMap bitmap(numBytes, c);
 
-                int pos;
-                DataAttrInfo tmp;
-                bool tmpf;
-                RID rid;
-                sm_mgr->FindAttr(conditions[i].lhsAttr.relName, conditions[i].lhsAttr.attrName, tmp, rid, tmpf, &pos);
-                bool isNull = false;
-                bitmap.isFree(pos, isNull);
-
-                if (!conditions[i].isNULL && !conditions[i].isNotNULL) {
-                    if (isNull) {
-                        matched = false;
-                    } else {
-                        switch(linfo.attrType) {
-                            case INT: {
-                                int lvalue;
-                                memcpy(&lvalue, pData+linfo.offset, linfo.attrLength);
-                                int rvalue;
-                                if (conditions[i].bRhsIsAttr) {
-                                    string rrname(conditions[i].rhsAttr.relName);
-                                    string raname(conditions[i].rhsAttr.attrName);
-                                    DataAttrInfo rinfo = attr2info[rrname+"."+raname];
-                                    memcpy(&rvalue, pData+rinfo.offset, rinfo.attrLength);
-                                } else {
-                                    memcpy(&rvalue, conditions[i].rhsValue.data, 4);
-                                }
-                                matched = matchValue(conditions[i].op, lvalue, rvalue);
-                                break;
-                            }
-                            case FLOAT: {
-                                float lvalue;
-                                memcpy(&lvalue, pData+linfo.offset, linfo.attrLength);
-                                float rvalue;
-                                if (conditions[i].bRhsIsAttr) {
-                                    string rrname(conditions[i].rhsAttr.relName);
-                                    string raname(conditions[i].rhsAttr.attrName);
-                                    DataAttrInfo rinfo = attr2info[rrname+"."+raname];
-                                    memcpy(&rvalue, pData+rinfo.offset, rinfo.attrLength);
-                                } else {
-                                    memcpy(&rvalue, conditions[i].rhsValue.data, 4);
-                                }
-                                matched = matchValue(conditions[i].op, lvalue, rvalue);
-                                break;
-                            }
-                            case STRING: {
-                                string lvalue;
-                                memcpy(&lvalue, pData+linfo.offset, linfo.attrLength);
-                                string rvalue;
-                                if (conditions[i].bRhsIsAttr) {
-                                    string rrname(conditions[i].rhsAttr.relName);
-                                    string raname(conditions[i].rhsAttr.attrName);
-                                    DataAttrInfo rinfo = attr2info[rrname+"."+raname];
-                                    memcpy(&rvalue, pData+rinfo.offset, rinfo.attrLength);
-                                } else {
-                                    memcpy(&rvalue, conditions[i].rhsValue.data, linfo.attrLength);
-                                }
-                                matched = matchValue(conditions[i].op, lvalue, rvalue);
-                                break;
-                            }
-                            default: {
-                                ;
-                            }
-                        }
-                    }
-                } else {
-                    if (conditions[i].isNULL) {
-                        matched = isNull ? true : false;
-                    } else {
-                        matched = isNull ? false : true;
-                    }
+        for (int i = 0; i < nColumns; i++) {
+            string lrname(relName);
+            string laname(columnNames[i]);
+            DataAttrInfo linfo = attr2info[lrname+"."+laname];
+            if (values[i].type == NULLTYPE) {
+                if (!linfo.couldBeNULL) {
+                    return QL_ATTR_CANT_BE_NULL;
                 }
-                if (!matched) {
-                    break;
-                }
-            }
-            if (matched) {
-                char* tmp;
-                rec.GetData(tmp);
-                for (int i = 0; i < nColumns; i++) {
-                    string lrname(relName);
-                    string laname(columnNames[i]);
-                    DataAttrInfo linfo = attr2info[lrname+"."+laname];
-                    if (values[i].type == NULLTYPE) {
-                        if (!linfo.couldBeNULL) {
-                            return QL_ATTR_CANT_BE_NULL;
-                        }
-                        bitmap.set(i, true);
-                    } else {
-                        memcpy(tmp+linfo.offset, values[i].data, linfo.attrLength);
-                        bitmap.set(i, false);
-                    }
-                }
-                rm_fhdl.UpdateRec(rec);
+                bitmap.set(i, true);
+            } else {
+                memcpy(tmp+linfo.offset, values[i].data, linfo.attrLength);
+                bitmap.set(i, false);
             }
         }
-        rm_fscan.CloseScan();
-        rm_mgr->CloseFile(rm_fhdl);
-    } else {
-
+        rm_fhdl.UpdateRec(rm_records[i]);
     }
+    rm_mgr->CloseFile(rm_fhdl);
+
+
     bool printPara = true;
     if (printPara) {
         int i;
