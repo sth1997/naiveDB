@@ -46,6 +46,8 @@ QL_Manager::QL_Manager(SM_Manager &smm, IX_Manager &ixm, RM_Manager &rmm)
     sm_mgr = &smm;
     ix_mgr = &ixm;
     rm_mgr = &rmm;
+    printPara = true;
+    // printResult = true;
 }
 
 //
@@ -115,7 +117,7 @@ RC QL_Manager::RM_GetRecords(const char* const relation, int nConditions, const 
     bool found;
     sm_mgr->FindRel(relation, dataRelInfo, rid, found);
 
-    // find dataAttrInfos, build map fomr name to dataAttrInfo
+    // find dataAttrInfos, build map form name to dataAttrInfo
     vector<DataAttrInfo> dataAttrInfos;
     map<string, DataAttrInfo> attr2info;
     sm_mgr->FindAllAttrs(relation, dataAttrInfos);
@@ -241,6 +243,148 @@ RC QL_Manager::RM_GetRecords(const char* const relation, int nConditions, const 
     rm_mgr->CloseFile(rm_fhdl);
 }
 
+RC QL_Manager::IX_GetRecords(const char* const relation, int nConditions, const Condition conditions[], vector<RM_Record>& rm_records, int indexNo, int condNo) {
+     // find dataRelInfo
+    RC rc;
+    DataRelInfo dataRelInfo;
+    RID rid;
+    bool found;
+    sm_mgr->FindRel(relation, dataRelInfo, rid, found);
+
+    // find dataAttrInfos, build map form name to dataAttrInfo
+    vector<DataAttrInfo> dataAttrInfos;
+    map<string, DataAttrInfo> attr2info;
+    sm_mgr->FindAllAttrs(relation, dataAttrInfos);
+    int primaryIndexNo = 0;
+
+    for (auto attr : dataAttrInfos) {
+        attr2info[string(attr.relName)+"."+string(attr.attrName)] = attr;
+        if (attr.isPrimaryKey) {
+            primaryIndexNo = attr.indexNo;
+        }
+    }
+    
+    RM_FileHandle rm_fhdl;
+    IX_IndexHandle ix_ihdl;
+    rm_mgr->OpenFile(relation, rm_fhdl);
+    ix_mgr->OpenIndex(relation, indexNo, ix_ihdl);
+    IX_IndexScan ix_scan;
+    ix_scan.OpenScan(ix_ihdl, conditions[condNo].op, conditions[condNo].rhsValue.data, NO_HINT);
+    RM_Record rec;
+    char* pData;
+    string relname(relation);
+    DataAttrInfo last = dataAttrInfos.back();
+    int numBytes = (dataRelInfo.attrCount + 7) / 8;
+
+    // scan every record
+    while (ix_scan.GetNextEntry(rid) == OK_RC) {
+        rm_fhdl.GetRec(rid, rec);
+        rec.GetData(pData);
+        bool matched = true;
+
+        // init bitmap
+        char* c = pData + last.offset + last.attrLength;
+        RM_BitMap bitmap(numBytes, c);
+
+        // check every conditions
+        for (int j = 0; j < nConditions; j++) {
+            // skip if not this rel
+            string lrname(conditions[j].lhsAttr.relName);
+            string laname(conditions[j].lhsAttr.attrName);
+            DataAttrInfo linfo = attr2info[lrname+"."+laname];
+
+            if (lrname != relname) {
+                continue;
+            }
+
+            int pos;
+            DataAttrInfo tmp;
+            bool tmpf;
+            RID rid;
+            sm_mgr->FindAttr(conditions[j].lhsAttr.relName, conditions[j].lhsAttr.attrName, tmp, rid, tmpf, &pos);
+            bool isNull = false;
+            bitmap.isFree(pos, isNull);
+            if (!conditions[j].isNULL && !conditions[j].isNotNULL) {
+                if (isNull) {
+                    matched = false;
+                } else {
+                    if (conditions[j].bRhsIsAttr) {
+                        string rrname(conditions[j].rhsAttr.relName);
+                        if (rrname != relname) {
+                            continue;
+                        }
+                    }
+                    switch(linfo.attrType) {
+                        case INT: {
+                            int lvalue;
+                            memcpy(&lvalue, pData+linfo.offset, linfo.attrLength);
+                            int rvalue;
+                            if (conditions[j].bRhsIsAttr) {
+                                string rrname(conditions[j].rhsAttr.relName);
+                                string raname(conditions[j].rhsAttr.attrName);
+                                DataAttrInfo rinfo = attr2info[rrname+"."+raname];
+                                memcpy(&rvalue, pData+rinfo.offset, rinfo.attrLength);
+                            } else {
+                                memcpy(&rvalue, conditions[j].rhsValue.data, 4);
+                            }
+                            matched = matchValue(conditions[j].op, lvalue, rvalue);
+                            break;
+                        }
+                        case FLOAT: {
+                            float lvalue;
+                            memcpy(&lvalue, pData+linfo.offset, linfo.attrLength);
+                            float rvalue;
+                            if (conditions[j].bRhsIsAttr) {
+                                string rrname(conditions[j].rhsAttr.relName);
+                                string raname(conditions[j].rhsAttr.attrName);
+                                DataAttrInfo rinfo = attr2info[rrname+"."+raname];
+                                memcpy(&rvalue, pData+rinfo.offset, rinfo.attrLength);
+                            } else {
+                                memcpy(&rvalue, conditions[j].rhsValue.data, 4);
+                            }
+                            matched = matchValue(conditions[j].op, lvalue, rvalue);
+                            break;
+                        }
+                        case STRING: {
+                            string lvalue;
+                            memcpy(&lvalue, pData+linfo.offset, linfo.attrLength);
+                            string rvalue;
+                            if (conditions[j].bRhsIsAttr) {
+                                string rrname(conditions[j].rhsAttr.relName);
+                                string raname(conditions[j].rhsAttr.attrName);
+                                DataAttrInfo rinfo = attr2info[rrname+"."+raname];
+                                memcpy(&rvalue, pData+rinfo.offset, rinfo.attrLength);
+                            } else {
+                                memcpy(&rvalue, conditions[j].rhsValue.data, linfo.attrLength);
+                            }
+                            matched = matchValue(conditions[j].op, lvalue, rvalue);
+                            break;
+                        }
+                        default: {
+                            ;
+                        }
+                    }
+                }
+            } else {
+                if (conditions[j].isNULL) {
+                    matched = isNull ? true : false;
+                } else {
+                    matched = isNull ? false : true;
+                }
+            }
+            if (!matched) {
+                break;
+            }
+        }
+        if (matched) {
+            rm_records.push_back(rec);
+        }
+    }
+    ix_scan.CloseScan();
+    ix_mgr->CloseIndex(ix_ihdl);
+    rm_mgr->CloseFile(rm_fhdl);
+}
+
 //
 // Handle the select clause
 //
@@ -253,7 +397,6 @@ RC QL_Manager::Select(int nSelAttrs, const RelAttr selAttrs[],
                       int nConditions, const Condition conditions[])
 {
 
-    bool printPara = true;
     if (printPara) {
 
         int i;
@@ -391,98 +534,130 @@ RC QL_Manager::Select(int nSelAttrs, const RelAttr selAttrs[],
         }
     }
 
-    bool optimize = false;
-    if (!optimize) {
-        vector<char*> res[2];
-        // scan every file
-        for (int i = 0; i < nRelations; i++) {
-            vector<RM_Record> records;
+    vector<char*> res[2];
+    // scan every file
+    for (int i = 0; i < nRelations; i++) {
+        bool optimize = false;
+        int indexNo, condNo;
+        Value value;
+        for (int j = 0; j < nConditions; j++) {
+            if (strcmp(conditions[j].lhsAttr.relName, relations[i]) == 0) {
+                if (!conditions[j].bRhsIsAttr) {
+                    string lrname(conditions[j].lhsAttr.relName);
+                    string laname(conditions[j].lhsAttr.attrName);
+                    DataAttrInfo linfo = attr2info[lrname+"."+laname];
+                    if(linfo.indexNo != -1) {
+                        optimize = true;
+                        indexNo = linfo.indexNo;
+                        condNo = j;
+                        value = conditions[j].rhsValue;
+                        break;
+                    }
+                }
+            }
+        }
+        vector<RM_Record> records;
+        if (!optimize) {
             RM_GetRecords(relations[i], nConditions, conditions, records);
-            char* pData;
-            for (int j = 0; j < records.size(); j++) {
-                records[j].GetData(pData);
-                char* tmp = new char[records[j].GetRecordSize()];
-                memcpy(tmp, pData, records[j].GetRecordSize());
-                res[i].push_back(tmp);
+        } else {
+            IX_GetRecords(relations[i], nConditions, conditions, records, indexNo, condNo);
+        }
+        char* pData;
+        for (int j = 0; j < records.size(); j++) {
+            records[j].GetData(pData);
+            char* tmp = new char[records[j].GetRecordSize()];
+            memcpy(tmp, pData, records[j].GetRecordSize());
+            res[i].push_back(tmp);
+        }
+        
+    }
+    
+    if (nRelations == 1) {
+        Printer p(*sm_mgr, changedSelAttrInfo, changedSelAttrInfo.size(), attributes);
+        p.PrintHeader(cout);
+        for (int i = 0; i < res[0].size(); i++) {
+            if (i < 10) {
+                p.Print(cout, res[0][i]);
+            } else {
+                p.FakePrint();
             }
         }
-        if (nRelations == 1) {
-            Printer p(*sm_mgr, changedSelAttrInfo, changedSelAttrInfo.size(), attributes);
-            p.PrintHeader(cout);
-            for (auto r : res[0]) {
-                p.Print(cout, r);
-            }
-            p.PrintFooter(cout);
-        }
-        // cross-products
-        if (nRelations == 2) {
-            Printer p(*sm_mgr, changedSelAttrInfo, changedSelAttrInfo.size(), attributes);
-            p.PrintHeader(cout);
-            char* pData = new char[dataRelInfos[0].recordSize + dataRelInfos[1].recordSize];
-            for (unsigned i = 0; i < res[0].size(); i++) {
-                memcpy(pData, res[0][i], dataRelInfos[0].recordSize);
-                for (unsigned j = 0; j < res[1].size(); j++) {
-                    bool matched = true;
-                    for (int k = 0; k < nConditions; k++) {
-                        if (conditions[k].bRhsIsAttr) {
-                            string lrname(conditions[k].lhsAttr.relName);
-                            string rrname(conditions[k].rhsAttr.relName);
-                            if (lrname != rrname) {
-                                string laname(conditions[k].lhsAttr.attrName);
-                                DataAttrInfo linfo = attr2info[lrname+"."+laname];
-                                string raname(conditions[k].rhsAttr.attrName);
-                                DataAttrInfo rinfo = attr2info[rrname+"."+raname];
-                                // swap if out of order
-                                if (lrname != relnames[0]) {
-                                    DataAttrInfo tmp = linfo;
-                                    linfo = rinfo;
-                                    rinfo = tmp;
+        p.PrintFooter(cout);
+    }
+    // cross-products
+    if (nRelations == 2) {
+        Printer p(*sm_mgr, changedSelAttrInfo, changedSelAttrInfo.size(), attributes);
+        p.PrintHeader(cout);
+        int printedCount = 0;
+        char* pData = new char[dataRelInfos[0].recordSize + dataRelInfos[1].recordSize];
+        for (unsigned i = 0; i < res[0].size(); i++) {
+            memcpy(pData, res[0][i], dataRelInfos[0].recordSize);
+            for (unsigned j = 0; j < res[1].size(); j++) {
+                bool matched = true;
+                for (int k = 0; k < nConditions; k++) {
+                    if (conditions[k].bRhsIsAttr) {
+                        string lrname(conditions[k].lhsAttr.relName);
+                        string rrname(conditions[k].rhsAttr.relName);
+                        if (lrname != rrname) {
+                            string laname(conditions[k].lhsAttr.attrName);
+                            DataAttrInfo linfo = attr2info[lrname+"."+laname];
+                            string raname(conditions[k].rhsAttr.attrName);
+                            DataAttrInfo rinfo = attr2info[rrname+"."+raname];
+                            // swap if out of order
+                            if (lrname != relnames[0]) {
+                                DataAttrInfo tmp = linfo;
+                                linfo = rinfo;
+                                rinfo = tmp;
+                            }
+                            switch (linfo.attrType) {
+                                case INT: {
+                                    int lvalue;
+                                    memcpy(&lvalue, res[0][i]+linfo.offset, linfo.attrLength);
+                                    int rvalue;
+                                    memcpy(&rvalue, res[1][i]+rinfo.offset, linfo.attrLength);
+                                    matched = matchValue(conditions[k].op, lvalue, rvalue);
+                                    break;
                                 }
-                                switch (linfo.attrType) {
-                                    case INT: {
-                                        int lvalue;
-                                        memcpy(&lvalue, res[0][i]+linfo.offset, linfo.attrLength);
-                                        int rvalue;
-                                        memcpy(&rvalue, res[1][i]+rinfo.offset, linfo.attrLength);
-                                        matched = matchValue(conditions[k].op, lvalue, rvalue);
-                                        break;
-                                    }
-                                    case FLOAT: {
-                                        float lvalue;
-                                        memcpy(&lvalue, res[0][i]+linfo.offset, linfo.attrLength);
-                                        float rvalue;
-                                        memcpy(&rvalue, res[1][i]+rinfo.offset, rinfo.attrLength);
-                                        matched = matchValue(conditions[k].op, lvalue, rvalue);
-                                        break;
-                                    }
-                                    case STRING: {
-                                        string lvalue;
-                                        memcpy(&lvalue, res[0][i]+linfo.offset, linfo.attrLength);
-                                        string rvalue;
-                                        memcpy(&rvalue, res[1][i]+rinfo.offset, rinfo.attrLength);
-                                        matched = matchValue(conditions[k].op, lvalue, rvalue);
-                                        break;
-                                    }
-                                    default: {
-                                        ;
-                                    }
+                                case FLOAT: {
+                                    float lvalue;
+                                    memcpy(&lvalue, res[0][i]+linfo.offset, linfo.attrLength);
+                                    float rvalue;
+                                    memcpy(&rvalue, res[1][i]+rinfo.offset, rinfo.attrLength);
+                                    matched = matchValue(conditions[k].op, lvalue, rvalue);
+                                    break;
+                                }
+                                case STRING: {
+                                    string lvalue;
+                                    memcpy(&lvalue, res[0][i]+linfo.offset, linfo.attrLength);
+                                    string rvalue;
+                                    memcpy(&rvalue, res[1][i]+rinfo.offset, rinfo.attrLength);
+                                    matched = matchValue(conditions[k].op, lvalue, rvalue);
+                                    break;
+                                }
+                                default: {
+                                    ;
                                 }
                             }
                         }
                     }
-                    memcpy(pData + dataRelInfos[0].recordSize, res[1][j], dataRelInfos[1].recordSize);
-                    if (matched) {
+                }
+                memcpy(pData + dataRelInfos[0].recordSize, res[1][j], dataRelInfos[1].recordSize);
+                if (matched) {
+                    if (printedCount < 10) {
                         p.Print(cout, pData);
+                    } else {
+                        p.FakePrint();
                     }
+                    printedCount++;
                 }
             }
-            delete []pData;
-            p.PrintFooter(cout);
         }
-        for (int i = 0; i < 2; ++i)
-            for (auto x : res[i])
-                delete []x;
+        delete []pData;
+        p.PrintFooter(cout);
     }
+    for (int i = 0; i < 2; ++i)
+        for (auto x : res[i])
+            delete []x;
 
     for (auto x : changedSelAttrs)
     {
@@ -498,8 +673,8 @@ RC QL_Manager::Select(int nSelAttrs, const RelAttr selAttrs[],
 RC QL_Manager::Insert(const char *relName,
                       int nValues, const Value values[])
 {
+    RC rc;
 
-    bool printPara = true;
     if (printPara) {
         int i;
 
@@ -527,6 +702,28 @@ RC QL_Manager::Insert(const char *relName,
         return QL_INCONSISTENT_VALUE_AMOUNT;
     }
     DataAttrInfo last = dataAttrInfos[dataAttrInfos.size() - 1];
+
+    IX_IndexHandle ix_idhl;
+    IX_IndexScan ix_scan;
+    Condition conditions[1];
+    for (int i = 0; i < dataAttrInfos.size(); i++) {
+        if (dataAttrInfos[i].isPrimaryKey) {
+            conditions[0].op = EQ_OP;
+            if (values[i].type != NULLTYPE) {
+                conditions[0].rhsValue = values[i];
+                vector<RM_Record> rm_records;
+                CHECK_NOZERO(ix_mgr->OpenIndex(relName, dataAttrInfos[i].indexNo, ix_idhl));
+                IX_GetRecords(relName, 0, conditions, rm_records, dataAttrInfos[i].indexNo, 0);
+                ix_mgr->CloseIndex(ix_idhl);
+                if (rm_records.size() > 0) {
+                    return QL_INSERT_KEY_DUPLICATED;
+                }
+            } else {
+                return QL_ATTR_CANT_BE_NULL;
+            }
+            break;
+        }
+    }
 
     // insert into rm file
     RM_FileHandle rm_fhdl;
@@ -569,7 +766,6 @@ RC QL_Manager::Insert(const char *relName,
             bitmap.set(i, false);
         }
     }
-    RC rc;
     CHECK_NOZERO(rm_fhdl.InsertRec(recData, rid));
     rm_mgr->CloseFile(rm_fhdl);
 
@@ -627,18 +823,47 @@ RC QL_Manager::Delete(const char *relName,
         }
     }
 
-    vector<RM_Record> records;
-    RM_GetRecords(relName, nConditions, conditions, records);
-    
+    // find dataAttrInfos, build map fomr name to dataAttrInfo
+    vector<DataAttrInfo> dataAttrInfos;
+    map<string, DataAttrInfo> attr2info;
+    sm_mgr->FindAllAttrs(relName, dataAttrInfos);
+    for (auto attr : dataAttrInfos) {
+        attr2info[string(attr.relName)+"."+string(attr.attrName)] = attr;
+    }
+
+    bool optimize = false;
+    int indexNo, condNo;
+    Value value;
+    for (int j = 0; j < nConditions; j++) {
+        if (!conditions[j].bRhsIsAttr) {
+            string lrname(conditions[j].lhsAttr.relName);
+            string laname(conditions[j].lhsAttr.attrName);
+            DataAttrInfo linfo = attr2info[lrname+"."+laname];
+            if(linfo.indexNo != -1) {
+                optimize = true;
+                indexNo = linfo.indexNo;
+                condNo = j;
+                value = conditions[j].rhsValue;
+                break;
+            }
+        }
+    }
+
     RM_FileHandle rm_fhdl;
     rm_mgr->OpenFile(relName, rm_fhdl);
-    for (int i = 0; i < records.size(); i++) {
-        records[i].GetRid(rid);
+    vector<RM_Record> records;
+    if (!optimize) {
+        RM_GetRecords(relName, nConditions, conditions, records);
+    } else {
+        IX_GetRecords(relName, nConditions, conditions, records, indexNo, condNo);
+    }
+    char* pData;
+    for (int j = 0; j < records.size(); j++) {
+        records[j].GetRid(rid);
         rm_fhdl.DeleteRec(rid);
     }
     rm_mgr->CloseFile(rm_fhdl);
 
-    bool printPara = true;
     if (printPara) {
         int i;
 
@@ -697,17 +922,75 @@ RC QL_Manager::Update(const char *relName,
             return QL_INCOMPATIBLE_TYPE;
         }
     }
-    
-    vector<RM_Record> rm_records;
+
+    bool optimize = false;
+    int indexNo, condNo;
+    Value value;
+    for (int j = 0; j < nConditions; j++) {
+        if (!conditions[j].bRhsIsAttr) {
+            string lrname(conditions[j].lhsAttr.relName);
+            string laname(conditions[j].lhsAttr.attrName);
+            DataAttrInfo linfo = attr2info[lrname+"."+laname];
+            if(linfo.indexNo != -1) {
+                optimize = true;
+                indexNo = linfo.indexNo;
+                condNo = j;
+                value = conditions[j].rhsValue;
+                break;
+            }
+        }
+    }
+
     RM_FileHandle rm_fhdl;
     rm_mgr->OpenFile(relName, rm_fhdl);
-    RM_GetRecords(relName, nConditions, conditions, rm_records);
+    vector<RM_Record> records;
+    if (!optimize) {
+        RM_GetRecords(relName, nConditions, conditions, records);
+    } else {
+        IX_GetRecords(relName, nConditions, conditions, records, indexNo, condNo);
+    }
+    char* pData;
+
     DataAttrInfo last = dataAttrInfos.back();
     int numBytes = (dataRelInfo.attrCount + 7) / 8;
-    
-    for (int i = 0; i < rm_records.size(); i++) {
+    int primaryNo;
+    RelAttr lhsAttr;
+    for (int i = 0; i < dataAttrInfos.size(); i++) {
+        if (dataAttrInfos[i].isPrimaryKey) {
+            primaryNo = i;
+            lhsAttr.relName = dataAttrInfos[i].relName;
+            lhsAttr.attrName = dataAttrInfos[i].attrName;
+        }
+    }
+
+    for (int i = 0; i < records.size(); i++) {
         char* tmp;
-        rm_records[i].GetData(tmp);
+        records[i].GetData(tmp);
+
+        // check if the updated table conflicts
+        int tmp_n = 1;
+        vector<RM_Record> tmp_records;
+        Condition tmp_conditions[1];
+        tmp_conditions[0].lhsAttr = lhsAttr;
+        tmp_conditions[0].rhsValue = values[primaryNo];
+        tmp_conditions[0].op = EQ_OP;
+        tmp_conditions[0].bRhsIsAttr = false;
+        if (!optimize) {
+            RM_GetRecords(relName, tmp_n, tmp_conditions, tmp_records);
+        } else {
+            IX_GetRecords(relName, tmp_n, tmp_conditions, tmp_records, indexNo, condNo);
+        }
+        if (tmp_records.size() > 1) {
+            return QL_UPDATE_CONFLICT;
+        }
+        if (tmp_records.size() == 1) {
+            RID rid1, rid2;
+            records[i].GetRid(rid1);
+            tmp_records[0].GetRid(rid2);
+            if (rid1.pageNum != rid2.pageNum || rid1.slotNum != rid2.slotNum) {
+                return QL_UPDATE_CONFLICT;
+            }
+        }
 
         // init bitmap
         char* c = tmp + last.offset + last.attrLength;
@@ -719,20 +1002,21 @@ RC QL_Manager::Update(const char *relName,
             DataAttrInfo linfo = attr2info[lrname+"."+laname];
             if (values[i].type == NULLTYPE) {
                 if (!linfo.couldBeNULL) {
+                    rm_mgr->CloseFile(rm_fhdl);
                     return QL_ATTR_CANT_BE_NULL;
                 }
                 bitmap.set(i, true);
             } else {
+                
                 memcpy(tmp+linfo.offset, values[i].data, linfo.attrLength);
                 bitmap.set(i, false);
             }
         }
-        rm_fhdl.UpdateRec(rm_records[i]);
+        rm_fhdl.UpdateRec(records[i]);
     }
     rm_mgr->CloseFile(rm_fhdl);
 
 
-    bool printPara = true;
     if (printPara) {
         int i;
 

@@ -36,6 +36,8 @@ public:
 
     void PrintFooter(std::ostream &c) const;
 
+    void FakePrint();
+
 private:
     DataAttrInfo *attributes;
     std::vector<std::vector<DataAttrInfo> > allAttributes;

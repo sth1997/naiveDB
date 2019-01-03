@@ -54,6 +54,9 @@ public:
         const Value values[],            // values in set clause
         int   nConditions,               // # conditions in where clause
         const Condition conditions[]);   // conditions in where clause
+    
+    RC SetPrintPara(bool p) {printPara = p; }
+    // RC SetPrintResult(bool p) {printResult = p; }
 
 private:
     template<typename T>
@@ -62,10 +65,13 @@ private:
         std::map<std::string,std::set<std::string> > &attr2rels,
         std::map<std::string, int> &relsCnt);
     RC RM_GetRecords(const char* const relation, int nConditions, const Condition conditions[], std::vector<RM_Record>& rm_records);
+    RC IX_GetRecords(const char* const relation, int nConditions, const Condition conditions[], std::vector<RM_Record>& rm_records, int indexNo, int condNo);
 
     RM_Manager* rm_mgr;          // RM_Manager object
     IX_Manager* ix_mgr;          // IX_Manager object
     SM_Manager* sm_mgr;          // SM_Manager object
+    bool printPara;
+    // bool printResult;
 };
 
 //
@@ -87,7 +93,9 @@ void QL_PrintError(RC rc);
 #define QL_NOT_SUPPORT_MULTI_JOIN_NOW (START_QL_WARN + 10) // ql didn't support multi join
 #define QL_ATTR_CANT_BE_NULL       (START_QL_WARN + 11)
 #define QL_INCONSISTENT_VALUE_AMOUNT (START_QL_WARN + 12)
-#define QL_LASTWARN                QL_INCONSISTENT_VALUE_AMOUNT
+#define QL_INSERT_KEY_DUPLICATED    (START_QL_WARN + 13)
+#define QL_UPDATE_CONFLICT          (START_QL_WARN + 14)
+#define QL_LASTWARN                QL_UPDATE_CONFLICT
 
 // Errors
 #define QL_INVALID_DATABASE_NAME   (START_QL_ERR  - 0) // Invalid database file name

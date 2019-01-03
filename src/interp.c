@@ -19,6 +19,7 @@
 
 #include "sm.h"
 #include "ql.h"
+#include "time.h"
 
 extern SM_Manager *pSmm;
 extern QL_Manager *pQlm;
@@ -76,7 +77,7 @@ RC interp(NODE *n)
    /* if input not coming from a terminal, then echo the query */
    if(!isatty(0))
       echo_query(n);
-
+   clock_t start_time=clock();
    switch(n -> kind){
 
       case N_CREATETABLE:            /* for CreateTable() */
@@ -317,7 +318,8 @@ RC interp(NODE *n)
       default:   // should never get here
          break;
    }
-
+   clock_t end_time=clock();
+   std::cout<< "Running time is: "<<static_cast<double>(end_time-start_time)/CLOCKS_PER_SEC*1000<<"ms"<<std::endl;
    return (errval);
 }
 
