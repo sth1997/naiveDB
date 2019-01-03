@@ -10,7 +10,7 @@ protected:
     virtual void SetUp() {
         start_time=clock();
         nAttrs = 3;
-        nRecords = 1000;
+        nRecords = 8;
         AttrInfo attrs[nAttrs];
         for (int i = 0; i < nAttrs; i++) {
             attrs[i].attrLength = 4;
@@ -240,10 +240,8 @@ TEST_F(QL_ManagerTest, UpdateBatch) {
     rhsValue[1].type = INT;
     int nConditions = 1;
     Condition conditions[1];
-    conditions[0].lhsAttr.relName = "testRel3";
     conditions[0].lhsAttr.attrName = "attr0";
     conditions[0].op = EQ_OP;
-    conditions[0].rhsAttr.relName = "testRel3";
     conditions[0].rhsAttr.attrName = "attr2";
     conditions[0].bRhsIsAttr = true;
     ASSERT_EQ(qmm.Update(relName, nColumns, columnNames, rhsValue, nConditions, conditions), OK_RC);
@@ -388,15 +386,12 @@ TEST_F(QL_ManagerTest, UpdateNULL) {
     relations[0] = "testRel3";
     int nConditions = 1;
     Condition conditions[2];
-    conditions[0].lhsAttr.relName = "testRel3";
+    conditions[0].lhsAttr.relName = NULL;
     conditions[0].lhsAttr.attrName = "attr1";
     conditions[0].isNULL = true;
     conditions[0].isNotNULL = false;
     ASSERT_EQ(qmm.Select(nSelAttrs, selAttrs, nRelations, relations, nConditions, conditions), OK_RC);
     ASSERT_EQ(qmm.Update(relName, nColumns, columnNames, rhsValue, nConditions, conditions), OK_RC);
-    ASSERT_EQ(qmm.Select(nSelAttrs, selAttrs, nRelations, relations, nConditions, conditions), OK_RC);
-    conditions[0].isNULL = false;
-    conditions[0].isNotNULL = true;
     ASSERT_EQ(qmm.Select(nSelAttrs, selAttrs, nRelations, relations, nConditions, conditions), OK_RC);
 }
 
@@ -438,10 +433,10 @@ TEST_F(QL_ManagerTest, SelectByIndex) {
     relations[0] = "testRel3";
     int nConditions = 1;
     Condition conditions[1];
-    conditions[0].lhsAttr.relName = "testRel3";
+    conditions[0].lhsAttr.relName = NULL;
     conditions[0].lhsAttr.attrName = "attr0";
     conditions[0].op = EQ_OP;
-    conditions[0].rhsAttr.relName = "testRel3";
+    conditions[0].rhsAttr.relName = NULL;
     conditions[0].rhsAttr.attrName = "attr2";
     conditions[0].bRhsIsAttr = false;
     conditions[0].rhsValue.type = INT;
@@ -473,10 +468,10 @@ TEST_F(QL_ManagerTest, DeleteByIndex) {
     relations[0] = "testRel3";
     int nConditions = 1;
     Condition conditions[1];
-    conditions[0].lhsAttr.relName = "testRel3";
+    conditions[0].lhsAttr.relName = NULL;
     conditions[0].lhsAttr.attrName = "attr0";
     conditions[0].op = EQ_OP;
-    conditions[0].rhsAttr.relName = "testRel3";
+    conditions[0].rhsAttr.relName = NULL;
     conditions[0].rhsAttr.attrName = "attr2";
     conditions[0].bRhsIsAttr = false;
     conditions[0].rhsValue.type = INT;
@@ -509,10 +504,10 @@ TEST_F(QL_ManagerTest, UpdateByIndex) {
     relations[0] = "testRel3";
     int nConditions = 1;
     Condition conditions[1];
-    conditions[0].lhsAttr.relName = "testRel3";
+    conditions[0].lhsAttr.relName = NULL;
     conditions[0].lhsAttr.attrName = "attr0";
     conditions[0].op = EQ_OP;
-    conditions[0].rhsAttr.relName = "testRel3";
+    conditions[0].rhsAttr.relName = NULL;
     conditions[0].rhsAttr.attrName = "attr2";
     conditions[0].bRhsIsAttr = false;
     conditions[0].rhsValue.type = INT;

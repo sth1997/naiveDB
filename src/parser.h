@@ -22,7 +22,7 @@ struct AttrInfo{
 };
 
 struct RelAttr{
-    char     *relName;    /* Relation name (may be NULL) */
+    char     *relName = NULL;    /* Relation name (may be NULL) */
     char     *attrName;   /* Attribute name */
     friend std::ostream &operator<<(std::ostream &s, const RelAttr &ra);
 };

@@ -1,0 +1,11 @@
+use test;
+show tables;
+select * from test;
+insert into test values (1,2,3);
+select * from test;
+insert into test values (2,2,3);
+select * from test;
+update test set attr1=3,attr2=3 where attr1=1;
+select * from test;
+delete from test where attr=3;
+select * from test;
