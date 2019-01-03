@@ -204,7 +204,10 @@ TEST_F(QL_ManagerTest, Delete) {
     conditions[0].op = EQ_OP;
     conditions[0].rhsAttr.relName = "testRel3";
     conditions[0].rhsAttr.attrName = "attr2";
-    conditions[0].bRhsIsAttr = true;
+    conditions[0].bRhsIsAttr = false;
+    int a = 2;
+    conditions[0].rhsValue.data = &a;
+    conditions[0].rhsValue.type = INT;
     ASSERT_EQ(qmm.Delete(relName, nConditions, conditions), OK_RC);
     int nSelAttrs = 1;
     RelAttr selAttrs[1];

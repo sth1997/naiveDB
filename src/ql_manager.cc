@@ -828,7 +828,7 @@ RC QL_Manager::Delete(const char *relName,
     map<string, DataAttrInfo> attr2info;
     sm_mgr->FindAllAttrs(relName, dataAttrInfos);
     for (auto attr : dataAttrInfos) {
-        attr2info[string(attr.relName)+"."+string(attr.attrName)] = attr;
+        attr2info[string(attr.attrName)] = attr;
     }
 
     bool optimize = false;
@@ -836,9 +836,8 @@ RC QL_Manager::Delete(const char *relName,
     Value value;
     for (int j = 0; j < nConditions; j++) {
         if (!conditions[j].bRhsIsAttr) {
-            string lrname(conditions[j].lhsAttr.relName);
             string laname(conditions[j].lhsAttr.attrName);
-            DataAttrInfo linfo = attr2info[lrname+"."+laname];
+            DataAttrInfo linfo = attr2info[laname];
             if(linfo.indexNo != -1) {
                 optimize = true;
                 indexNo = linfo.indexNo;
@@ -898,7 +897,7 @@ RC QL_Manager::Update(const char *relName,
     map<string, DataAttrInfo> attr2info;
     sm_mgr->FindAllAttrs(relName, dataAttrInfos);
     for (auto attr : dataAttrInfos) {
-        attr2info[string(attr.relName)+"."+string(attr.attrName)] = attr;
+        attr2info[string(attr.attrName)] = attr;
     }
 
     // check each condition
@@ -928,9 +927,8 @@ RC QL_Manager::Update(const char *relName,
     Value value;
     for (int j = 0; j < nConditions; j++) {
         if (!conditions[j].bRhsIsAttr) {
-            string lrname(conditions[j].lhsAttr.relName);
             string laname(conditions[j].lhsAttr.attrName);
-            DataAttrInfo linfo = attr2info[lrname+"."+laname];
+            DataAttrInfo linfo = attr2info[laname];
             if(linfo.indexNo != -1) {
                 optimize = true;
                 indexNo = linfo.indexNo;
@@ -997,9 +995,8 @@ RC QL_Manager::Update(const char *relName,
         RM_BitMap bitmap(numBytes, c);
 
         for (int i = 0; i < nColumns; i++) {
-            string lrname(relName);
             string laname(columnNames[i]);
-            DataAttrInfo linfo = attr2info[lrname+"."+laname];
+            DataAttrInfo linfo = attr2info[laname];
             if (values[i].type == NULLTYPE) {
                 if (!linfo.couldBeNULL) {
                     rm_mgr->CloseFile(rm_fhdl);
