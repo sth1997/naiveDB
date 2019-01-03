@@ -109,6 +109,12 @@ TEST_F(SM_ManagerTest, Test) {
     ASSERT_EQ(smm.CreateIndex("testRel", "attr1"), OK_RC);
     ASSERT_EQ(smm.DropTable("testRel"), OK_RC);
     ASSERT_EQ(smm.PrintTables(), OK_RC);
+    attrs[0].isPrimaryKey = 1;
+    attrs[1].isPrimaryKey = 1;
+    ASSERT_EQ(smm.CreateTable("testPrimeKey", 2, attrs), SM_BADTABLEPARA);
+    attrs[0].isPrimaryKey = 0;
+    ASSERT_EQ(smm.CreateTable("testPrimeKey", 2, attrs), OK_RC);
+    ASSERT_EQ(smm.PrintTables(), OK_RC);
     ASSERT_EQ(smm.CloseDb(), OK_RC);
     for (auto dbname : dbNames)
     {
