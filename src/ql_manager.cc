@@ -1076,8 +1076,6 @@ RC QL_Manager::Update(const char *relName,
         char* c = recData + last.offset + last.attrLength;
         RM_BitMap bitmap(numBytes, c);
 
-        // delete from ix
-        IX_IndexHandle ix_ihdl;
         char* bakData = new char[records[i].GetRecordSize()];
         memcpy(bakData, recData, records[i].GetRecordSize());
         for (int i = 0; i < nColumns; i++) {
@@ -1095,22 +1093,23 @@ RC QL_Manager::Update(const char *relName,
                 bitmap.set(i, false);
             }
         }
-        // delete from ix
-        ix_ihdl.DeleteEntry(bakData, rid);
-        delete[] bakData;
         rm_fhdl.UpdateRec(records[i]);
 
-        // insert to ix
+        // update to ix
+        IX_IndexHandle ix_ihdl;
         char* pData = NULL;
         for (int j = 0; j < dataAttrInfos.size(); j++) {
             if (dataAttrInfos[j].indexNo != -1) {
                 ix_mgr->OpenIndex(relName, dataAttrInfos[j].indexNo, ix_ihdl);
                 records[i].GetData(pData);
                 records[i].GetRid(rid);
+                ix_ihdl.DeleteEntry(bakData, rid);
                 ix_ihdl.InsertEntry(pData, rid);
                 ix_mgr->CloseIndex(ix_ihdl);
             }
         }
+        delete[] bakData;
+
     }
     rm_mgr->CloseFile(rm_fhdl);
 
