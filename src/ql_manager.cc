@@ -853,7 +853,9 @@ RC QL_Manager::Delete(const char *relName,
     // find dataAttrInfos, build map form name to dataAttrInfo
     vector<DataAttrInfo> dataAttrInfos;
     map<string, DataAttrInfo> attr2info;
-    sm_mgr->FindAllAttrs(relName, dataAttrInfos);
+    CHECK_NOZERO(sm_mgr->FindAllAttrs(relName, dataAttrInfos));
+    if (rc)
+        return rc;
     for (auto attr : dataAttrInfos) {
         attr2info[string(attr.attrName)] = attr;
     }
