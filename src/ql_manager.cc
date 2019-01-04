@@ -805,9 +805,13 @@ RC QL_Manager::Insert(const char *relName,
     IX_IndexHandle ix_ihdl;
     for (int i = 0; i < nValues; i++) {
         if (dataAttrInfos[i].indexNo != -1) {
-            ix_mgr->OpenIndex(relName, i, ix_ihdl);
-            ix_ihdl.InsertEntry(values[i].data, rid);
-            ix_mgr->CloseIndex(ix_ihdl);
+            bool isNull;
+            bitmap.isFree(i, isNull);
+            if (!isNull) {
+                ix_mgr->OpenIndex(relName, i, ix_ihdl);
+                ix_ihdl.InsertEntry(values[i].data, rid);
+                ix_mgr->CloseIndex(ix_ihdl);
+            }
         }
     }
 
@@ -853,6 +857,8 @@ RC QL_Manager::Delete(const char *relName,
     for (auto attr : dataAttrInfos) {
         attr2info[string(attr.attrName)] = attr;
     }
+    DataAttrInfo last = dataAttrInfos.back();
+    int numBytes = (dataAttrInfos.size() + 7) / 8;
 
     // check each condition
     for (int i = 0; i < nConditions; i++) {
@@ -921,7 +927,13 @@ RC QL_Manager::Delete(const char *relName,
             for (int j = 0; j < records.size(); j++) {
                 records[j].GetData(pData);
                 records[j].GetRid(rid);
-                ix_ihdl.DeleteEntry(pData, rid);
+                char* c = pData + last.offset + last.attrLength;
+                RM_BitMap bitmap(numBytes, c);
+                bool isNull;
+                bitmap.isFree(i, isNull);
+                if (!isNull) {
+                    ix_ihdl.DeleteEntry(pData + dataAttrInfos[i].offset, rid);
+                }
             }
             ix_mgr->CloseIndex(ix_ihdl);
         }
@@ -1078,6 +1090,7 @@ RC QL_Manager::Update(const char *relName,
 
         char* bakData = new char[records[i].GetRecordSize()];
         memcpy(bakData, recData, records[i].GetRecordSize());
+        RM_BitMap bakBitmap(numBytes, c);
         for (int i = 0; i < nColumns; i++) {
             string laname(columnNames[i]);
             DataAttrInfo linfo = attr2info[laname];
@@ -1103,8 +1116,15 @@ RC QL_Manager::Update(const char *relName,
                 ix_mgr->OpenIndex(relName, dataAttrInfos[j].indexNo, ix_ihdl);
                 records[i].GetData(pData);
                 records[i].GetRid(rid);
-                ix_ihdl.DeleteEntry(bakData, rid);
-                ix_ihdl.InsertEntry(pData, rid);
+                bool isNull;
+                bakBitmap.isFree(j, isNull);
+                if (!isNull) {
+                    ix_ihdl.DeleteEntry(bakData + dataAttrInfos[j].offset, rid);
+                }
+                bitmap.isFree(j, isNull);
+                if (!isNull) {
+                    ix_ihdl.InsertEntry(pData + dataAttrInfos[j].offset, rid);
+                }
                 ix_mgr->CloseIndex(ix_ihdl);
             }
         }
