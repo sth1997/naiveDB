@@ -846,7 +846,7 @@ RC QL_Manager::Delete(const char *relName,
     RC rc;
     RID rid;
    
-    // find dataAttrInfos, build map fomr name to dataAttrInfo
+    // find dataAttrInfos, build map form name to dataAttrInfo
     vector<DataAttrInfo> dataAttrInfos;
     map<string, DataAttrInfo> attr2info;
     sm_mgr->FindAllAttrs(relName, dataAttrInfos);
@@ -912,6 +912,20 @@ RC QL_Manager::Delete(const char *relName,
         rm_fhdl.DeleteRec(rid);
     }
     rm_mgr->CloseFile(rm_fhdl);
+
+    // delete from ix
+    IX_IndexHandle ix_ihdl;
+    for (int i = 0; i < dataAttrInfos.size(); i++) {
+        if (dataAttrInfos[i].indexNo != -1) {
+            ix_mgr->OpenIndex(relName, dataAttrInfos[i].indexNo, ix_ihdl);
+            for (int j = 0; j < records.size(); j++) {
+                records[j].GetData(pData);
+                records[j].GetRid(rid);
+                ix_ihdl.DeleteEntry(pData, rid);
+            }
+            ix_mgr->CloseIndex(ix_ihdl);
+        }
+    }
 
     return OK_RC;
 }
@@ -1062,12 +1076,17 @@ RC QL_Manager::Update(const char *relName,
         char* c = recData + last.offset + last.attrLength;
         RM_BitMap bitmap(numBytes, c);
 
+        // delete from ix
+        IX_IndexHandle ix_ihdl;
+        char* bakData = new char[records[i].GetRecordSize()];
+        memcpy(bakData, recData, records[i].GetRecordSize());
         for (int i = 0; i < nColumns; i++) {
             string laname(columnNames[i]);
             DataAttrInfo linfo = attr2info[laname];
             if (values[i].type == NULLTYPE) {
                 if (!linfo.couldBeNULL) {
                     rm_mgr->CloseFile(rm_fhdl);
+                    delete[] bakData;
                     return QL_ATTR_CANT_BE_NULL;
                 }
                 bitmap.set(i, true);
@@ -1076,7 +1095,22 @@ RC QL_Manager::Update(const char *relName,
                 bitmap.set(i, false);
             }
         }
+        // delete from ix
+        ix_ihdl.DeleteEntry(bakData, rid);
+        delete[] bakData;
         rm_fhdl.UpdateRec(records[i]);
+
+        // insert to ix
+        char* pData = NULL;
+        for (int j = 0; j < dataAttrInfos.size(); j++) {
+            if (dataAttrInfos[j].indexNo != -1) {
+                ix_mgr->OpenIndex(relName, dataAttrInfos[j].indexNo, ix_ihdl);
+                records[i].GetData(pData);
+                records[i].GetRid(rid);
+                ix_ihdl.InsertEntry(pData, rid);
+                ix_mgr->CloseIndex(ix_ihdl);
+            }
+        }
     }
     rm_mgr->CloseFile(rm_fhdl);
 

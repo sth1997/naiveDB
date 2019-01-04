@@ -254,7 +254,7 @@ TEST_F(QL_ManagerTest, DeleteInsert) {
     */
     ptrs[0] = 2;
     insert(nAttrs, ptrs);
-    //ASSERT_EQ(qmm.Select(nSelAttrs, selAttrs, nRelations, relations, nConditions, conditions), OK_RC);
+    // ASSERT_EQ(qmm.Select(nSelAttrs, selAttrs, nRelations, relations, nConditions, conditions), OK_RC);
 }
 
 TEST_F(QL_ManagerTest, UpdateBatch) {
