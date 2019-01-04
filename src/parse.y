@@ -29,6 +29,8 @@
 #include "ql.h"
 using namespace std;
   // Added by Wendy Tobagus
+#define YYMAXDEPTH 1000000
+#define YYSTACK_USE_ALLOCA 1
 #ifndef yyrestart
 void yyrestart(FILE*);
 #endif

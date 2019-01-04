@@ -16,7 +16,7 @@
 /*
  * size of buffer of strings
  */
-#define MAXCHAR		5000
+#define MAXCHAR		5000000
 
 /*
  * buffer for string allocation
@@ -35,7 +35,7 @@ static char *string_alloc(int len)
    char *s;
 
    if(charptr + len > MAXCHAR){
-      fprintf(stderr, "out of memory\n");
+      fprintf(stderr, "len out of memory\n");
       exit(1);
    }
 

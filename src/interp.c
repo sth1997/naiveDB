@@ -70,6 +70,26 @@ static void print_values(NODE *n);
  * interp: interprets parse trees
  *
  */
+
+namespace{
+
+void PrintError(RC rc)
+{
+   if (abs(rc) <= END_PF_WARN)
+      PF_PrintError(rc);
+   else if (abs(rc) <= END_RM_WARN)
+      RM_PrintError(rc);
+   else if (abs(rc) <= END_IX_WARN)
+      IX_PrintError(rc);
+   else if (abs(rc) <= END_SM_WARN)
+      SM_PrintError(rc);
+   else if (abs(rc) <= END_QL_WARN)
+      QL_PrintError(rc);
+   else
+      std::cerr << "Error code out of range: " << rc << "\n";
+}
+}
+
 RC interp(NODE *n)
 {
    RC errval = 0;         /* returned error value      */
@@ -211,6 +231,8 @@ RC interp(NODE *n)
                /* Make the call to insert */
                errval = pQlm->Insert(n->u.INSERT.relname,
                      nValues, values);
+               if (errval)
+                  PrintError(errval);
             }
             break;
          }   
