@@ -105,3 +105,21 @@ TEST_F(IX_IndexHandleTest, TestInsert1) {
     }
     ASSERT_EQ(indexHandle.GetHeight(), 6);
 }
+
+TEST_F(IX_IndexHandleTest, TestInsert2) {
+    ASSERT_EQ(indexHandle.GetHeight(), 1);
+    LongInt key;
+
+    ASSERT_EQ(insert(1, key), OK_RC);
+    ASSERT_EQ(insert(1, key), IX_ENTRYEXISTS);
+    ASSERT_EQ(insert(3, key), OK_RC);
+    ASSERT_EQ(insert(5, key), OK_RC);
+    ASSERT_EQ(insert(7, key), OK_RC);
+    ASSERT_EQ(indexHandle.GetHeight(), 1);
+    // split, height + 1
+    ASSERT_EQ(insert(9, key), OK_RC);
+    ASSERT_EQ(indexHandle.GetHeight(), 2);
+
+    ASSERT_EQ(remove(3, key), OK_RC);
+    ASSERT_EQ(insert(3, key), OK_RC);
+}
