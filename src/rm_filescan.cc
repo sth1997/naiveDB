@@ -170,7 +170,7 @@ RC RM_FileScan::GetNextRec(RM_Record& rec) {
         // TODO: move getthispage outside the loop
         CHECK_NOZERO(pf_fhdl->GetThisPage(pageNum, pf_phdl));
         rm_fhdl->GetPageHeader(pf_phdl, rm_phdr);
-        RM_BitMap bitmap(rm_phdr.freeSlotsNum, rm_phdr.freeSlots);
+        RM_BitMap bitmap(rm_phdr.totalSlotsNum >> 3, rm_phdr.freeSlots);
         bool isFree;
         bitmap.isFree(slotNum, isFree);
         if (!isFree) {

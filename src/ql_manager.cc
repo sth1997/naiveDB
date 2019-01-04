@@ -46,7 +46,7 @@ QL_Manager::QL_Manager(SM_Manager &smm, IX_Manager &ixm, RM_Manager &rmm)
     sm_mgr = &smm;
     ix_mgr = &ixm;
     rm_mgr = &rmm;
-    printPara = true;
+    printPara = false;
 }
 
 //
