@@ -10,7 +10,7 @@ protected:
     virtual void SetUp() {
         start_time=clock();
         nAttrs = 3;
-        nRecords = 8;
+        nRecords = 10000;
         AttrInfo attrs[nAttrs];
         for (int i = 0; i < nAttrs; i++) {
             attrs[i].attrLength = 4;

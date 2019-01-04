@@ -114,21 +114,21 @@ RC QL_Manager::RM_GetRecords(const char* const relation, int nConditions, const 
     DataRelInfo dataRelInfo;
     RID rid;
     bool found;
-    sm_mgr->FindRel(relation, dataRelInfo, rid, found);
+    CHECK_NOZERO(sm_mgr->FindRel(relation, dataRelInfo, rid, found));
 
     // find dataAttrInfos, build map form name to dataAttrInfo
     vector<DataAttrInfo> dataAttrInfos;
     map<string, DataAttrInfo> attr2info;
-    sm_mgr->FindAllAttrs(relation, dataAttrInfos);
+    CHECK_NOZERO(sm_mgr->FindAllAttrs(relation, dataAttrInfos));
     for (auto attr : dataAttrInfos) {
         attr2info[string(attr.relName)+"."+string(attr.attrName)] = attr;
     }
     
     RM_FileHandle rm_fhdl;
-    rm_mgr->OpenFile(relation, rm_fhdl);
+    CHECK_NOZERO(rm_mgr->OpenFile(relation, rm_fhdl));
     RM_FileScan rm_fscan;
     int a = 0;
-    rm_fscan.OpenScan(rm_fhdl, INT, 4, 0, NO_OP, &a);
+    CHECK_NOZERO(rm_fscan.OpenScan(rm_fhdl, INT, 4, 0, NO_OP, &a));
     RM_Record rec;
     char* pData;
     DataAttrInfo last = dataAttrInfos.back();
@@ -136,7 +136,7 @@ RC QL_Manager::RM_GetRecords(const char* const relation, int nConditions, const 
     string relname(relation);
     // scan every record
     while (rm_fscan.GetNextRec(rec) == OK_RC) {
-        rec.GetData(pData);
+        CHECK_NOZERO(rec.GetData(pData));
         bool matched = true;
 
         // init bitmap
@@ -164,10 +164,10 @@ RC QL_Manager::RM_GetRecords(const char* const relation, int nConditions, const 
             bool tmpf;
             RID rid;
             // cout << relation << "." << conditions[i].lhsAttr.attrName << endl;
-            sm_mgr->FindAttr(relation, conditions[i].lhsAttr.attrName, linfo, rid, tmpf, &pos);
+            CHECK_NOZERO(sm_mgr->FindAttr(relation, conditions[i].lhsAttr.attrName, linfo, rid, tmpf, &pos));
             bool isNull = false;
             // cout << "pos: " << pos << endl;
-            bitmap.isFree(pos, isNull);
+            CHECK_NOZERO(bitmap.isFree(pos, isNull));
             if (!conditions[i].isNULL && !conditions[i].isNotNULL) {
                 if (isNull) {
                     matched = false;
@@ -252,8 +252,8 @@ RC QL_Manager::RM_GetRecords(const char* const relation, int nConditions, const 
             rm_records.push_back(rec);
         }
     }
-    rm_fscan.CloseScan();
-    rm_mgr->CloseFile(rm_fhdl);
+    CHECK_NOZERO(rm_fscan.CloseScan());
+    CHECK_NOZERO(rm_mgr->CloseFile(rm_fhdl));
 }
 
 RC QL_Manager::IX_GetRecords(const char* const relation, int nConditions, const Condition conditions[], vector<RM_Record>& rm_records, int indexNo, int condNo) {
@@ -262,12 +262,12 @@ RC QL_Manager::IX_GetRecords(const char* const relation, int nConditions, const 
     DataRelInfo dataRelInfo;
     RID rid;
     bool found;
-    sm_mgr->FindRel(relation, dataRelInfo, rid, found);
+    CHECK_NOZERO(sm_mgr->FindRel(relation, dataRelInfo, rid, found));
 
     // find dataAttrInfos, build map form name to dataAttrInfo
     vector<DataAttrInfo> dataAttrInfos;
     map<string, DataAttrInfo> attr2info;
-    sm_mgr->FindAllAttrs(relation, dataAttrInfos);
+    CHECK_NOZERO(sm_mgr->FindAllAttrs(relation, dataAttrInfos));
     int primaryIndexNo = 0;
 
     for (auto attr : dataAttrInfos) {
@@ -279,10 +279,10 @@ RC QL_Manager::IX_GetRecords(const char* const relation, int nConditions, const 
     
     RM_FileHandle rm_fhdl;
     IX_IndexHandle ix_ihdl;
-    rm_mgr->OpenFile(relation, rm_fhdl);
-    ix_mgr->OpenIndex(relation, indexNo, ix_ihdl);
+    CHECK_NOZERO(rm_mgr->OpenFile(relation, rm_fhdl));
+    CHECK_NOZERO(ix_mgr->OpenIndex(relation, indexNo, ix_ihdl));
     IX_IndexScan ix_scan;
-    ix_scan.OpenScan(ix_ihdl, conditions[condNo].op, conditions[condNo].rhsValue.data, NO_HINT);
+    CHECK_NOZERO(ix_scan.OpenScan(ix_ihdl, conditions[condNo].op, conditions[condNo].rhsValue.data, NO_HINT));
     RM_Record rec;
     char* pData;
     string relname(relation);
@@ -291,8 +291,8 @@ RC QL_Manager::IX_GetRecords(const char* const relation, int nConditions, const 
 
     // scan every record
     while (ix_scan.GetNextEntry(rid) == OK_RC) {
-        rm_fhdl.GetRec(rid, rec);
-        rec.GetData(pData);
+        CHECK_NOZERO(rm_fhdl.GetRec(rid, rec));
+        CHECK_NOZERO(rec.GetData(pData));
         bool matched = true;
 
         // init bitmap
@@ -319,9 +319,9 @@ RC QL_Manager::IX_GetRecords(const char* const relation, int nConditions, const 
             DataAttrInfo linfo;
             bool tmpf;
             RID rid;
-            sm_mgr->FindAttr(relation, conditions[i].lhsAttr.attrName, linfo, rid, tmpf, &pos);
+            CHECK_NOZERO(sm_mgr->FindAttr(relation, conditions[i].lhsAttr.attrName, linfo, rid, tmpf, &pos));
             bool isNull = false;
-            bitmap.isFree(pos, isNull);
+            CHECK_NOZERO(bitmap.isFree(pos, isNull));
             if (!conditions[i].isNULL && !conditions[i].isNotNULL) {
                 if (isNull) {
                     matched = false;
@@ -406,9 +406,9 @@ RC QL_Manager::IX_GetRecords(const char* const relation, int nConditions, const 
             rm_records.push_back(rec);
         }
     }
-    ix_scan.CloseScan();
-    ix_mgr->CloseIndex(ix_ihdl);
-    rm_mgr->CloseFile(rm_fhdl);
+    CHECK_NOZERO(ix_scan.CloseScan());
+    CHECK_NOZERO(ix_mgr->CloseIndex(ix_ihdl));
+    CHECK_NOZERO(rm_mgr->CloseFile(rm_fhdl));
 }
 
 //
@@ -722,14 +722,14 @@ RC QL_Manager::Insert(const char *relName,
     RID rid;
     bool found = false;
     DataRelInfo dataRelInfo;
-    sm_mgr->FindRel(relName, dataRelInfo, rid, found);
+    CHECK_NOZERO(sm_mgr->FindRel(relName, dataRelInfo, rid, found));
     if (!found) {
         return QL_RELATION_NOT_FOUND;
     }
 
     // get attr length from rel
     vector<DataAttrInfo> dataAttrInfos;
-    sm_mgr->FindAllAttrs(relName, dataAttrInfos);
+    CHECK_NOZERO(sm_mgr->FindAllAttrs(relName, dataAttrInfos));
     if (dataAttrInfos.size() != nValues) {
         return QL_INCONSISTENT_VALUE_AMOUNT;
     }
@@ -746,7 +746,7 @@ RC QL_Manager::Insert(const char *relName,
                 vector<RM_Record> rm_records;
                 CHECK_NOZERO(ix_mgr->OpenIndex(relName, dataAttrInfos[i].indexNo, ix_idhl));
                 IX_GetRecords(relName, 0, conditions, rm_records, dataAttrInfos[i].indexNo, 0);
-                ix_mgr->CloseIndex(ix_idhl);
+                CHECK_NOZERO(ix_mgr->CloseIndex(ix_idhl));
                 if (rm_records.size() > 0) {
                     return QL_INSERT_KEY_DUPLICATED;
                 }
@@ -759,7 +759,7 @@ RC QL_Manager::Insert(const char *relName,
 
     // insert into rm file
     RM_FileHandle rm_fhdl;
-    rm_mgr->OpenFile(relName, rm_fhdl);
+    CHECK_NOZERO(rm_mgr->OpenFile(relName, rm_fhdl));
     char* recData = new char[dataRelInfo.recordSize];
     memset(recData, 0, dataRelInfo.recordSize);
     int numBytes = (dataRelInfo.attrCount + 7) / 8;
@@ -771,7 +771,7 @@ RC QL_Manager::Insert(const char *relName,
                 delete[] recData;
                 return QL_ATTR_CANT_BE_NULL;
             }
-            bitmap.set(i, true);
+            CHECK_NOZERO(bitmap.set(i, true));
         } else {
             switch(dataAttrInfos[i].attrType) {
                 case INT: {
@@ -795,22 +795,22 @@ RC QL_Manager::Insert(const char *relName,
                     ;
                 }
             }
-            bitmap.set(i, false);
+            CHECK_NOZERO(bitmap.set(i, false));
         }
     }
     CHECK_NOZERO(rm_fhdl.InsertRec(recData, rid));
-    rm_mgr->CloseFile(rm_fhdl);
+    CHECK_NOZERO(rm_mgr->CloseFile(rm_fhdl));
 
     // insert into index
     IX_IndexHandle ix_ihdl;
     for (int i = 0; i < nValues; i++) {
         if (dataAttrInfos[i].indexNo != -1) {
             bool isNull;
-            bitmap.isFree(i, isNull);
+            CHECK_NOZERO(bitmap.isFree(i, isNull));
             if (!isNull) {
-                ix_mgr->OpenIndex(relName, i, ix_ihdl);
-                ix_ihdl.InsertEntry(values[i].data, rid);
-                ix_mgr->CloseIndex(ix_ihdl);
+                CHECK_NOZERO(ix_mgr->OpenIndex(relName, i, ix_ihdl));
+                CHECK_NOZERO(ix_ihdl.InsertEntry(values[i].data, rid));
+                CHECK_NOZERO(ix_mgr->CloseIndex(ix_ihdl));
             }
         }
     }
