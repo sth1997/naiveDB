@@ -319,7 +319,7 @@ RC QL_Manager::IX_GetRecords(const char* const relation, int nConditions, const 
             DataAttrInfo linfo;
             bool tmpf;
             RID rid;
-            sm_mgr->FindAttr(conditions[i].lhsAttr.relName, conditions[i].lhsAttr.attrName, linfo, rid, tmpf, &pos);
+            sm_mgr->FindAttr(relation, conditions[i].lhsAttr.attrName, linfo, rid, tmpf, &pos);
             bool isNull = false;
             bitmap.isFree(pos, isNull);
             if (!conditions[i].isNULL && !conditions[i].isNotNULL) {
@@ -539,10 +539,9 @@ RC QL_Manager::Select(int nSelAttrs, const RelAttr selAttrs[],
         if ((rc = CheckAttr(conditions[i].lhsAttr, attr2rels, relsCnt))) {
             return rc;
         }
-        RID rid;
-        bool found;
         DataAttrInfo dataAttrInfo;
-        CHECK_NOZERO(sm_mgr->FindAttr(conditions[i].lhsAttr.relName, conditions[i].lhsAttr.attrName, dataAttrInfo, rid, found));
+        string laname(conditions[i].lhsAttr.attrName);
+        dataAttrInfo = attr2info[*(attr2rels[laname].begin())+"."+laname];
         AttrType lhsType = dataAttrInfo.attrType;
         AttrType rhsType;
         // 4.2 check rhsAttr && 4.3 check compatibility
@@ -550,7 +549,8 @@ RC QL_Manager::Select(int nSelAttrs, const RelAttr selAttrs[],
             if ((rc = CheckAttr(conditions[i].rhsAttr, attr2rels, relsCnt))) {
                 return rc;
             }
-            CHECK_NOZERO(sm_mgr->FindAttr(conditions[i].rhsAttr.relName, conditions[i].rhsAttr.attrName, dataAttrInfo, rid, found));
+            string raname(conditions[i].rhsAttr.attrName);
+            dataAttrInfo = attr2info[*(attr2rels[raname].begin())+"."+raname];
             rhsType = dataAttrInfo.attrType;
         } else {
             rhsType = conditions[i].rhsValue.type;
