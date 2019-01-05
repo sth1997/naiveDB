@@ -496,11 +496,12 @@ RC SM_Manager::CreateTable(const char* relName, int attrCount, AttrInfo* attribu
     {
         if (attributes[i].attrType == INT || attributes[i].attrType == FLOAT)
         {
-            if (attributes[i].attrLength != 4)
+            attributes[i].attrLength = 4;
+            /*if (attributes[i].attrLength != 4)
             {
                 delete []attrinfo;
                 return SM_BADTABLEPARA;
-            }
+            }*/
         }
         else if (attributes[i].attrType == STRING)
         {
