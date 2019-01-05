@@ -541,7 +541,11 @@ RC QL_Manager::Select(int nSelAttrs, const RelAttr selAttrs[],
         }
         DataAttrInfo dataAttrInfo;
         string laname(conditions[i].lhsAttr.attrName);
-        dataAttrInfo = attr2info[*(attr2rels[laname].begin())+"."+laname];
+        if (conditions[i].lhsAttr.relName == NULL) {
+            dataAttrInfo = attr2info[*(attr2rels[laname].begin())+"."+laname];
+        } else {
+            dataAttrInfo = attr2info[string(conditions[i].lhsAttr.relName)+"."+laname];
+        }
         AttrType lhsType = dataAttrInfo.attrType;
         AttrType rhsType;
         // 4.2 check rhsAttr && 4.3 check compatibility
@@ -550,7 +554,11 @@ RC QL_Manager::Select(int nSelAttrs, const RelAttr selAttrs[],
                 return rc;
             }
             string raname(conditions[i].rhsAttr.attrName);
-            dataAttrInfo = attr2info[*(attr2rels[raname].begin())+"."+raname];
+            if (conditions[i].rhsAttr.relName == NULL) {
+                dataAttrInfo = attr2info[*(attr2rels[raname].begin())+"."+raname];
+            } else {
+                dataAttrInfo = attr2info[string(conditions[i].rhsAttr.relName)+"."+raname];
+            }
             rhsType = dataAttrInfo.attrType;
         } else {
             rhsType = conditions[i].rhsValue.type;
@@ -623,7 +631,6 @@ RC QL_Manager::Select(int nSelAttrs, const RelAttr selAttrs[],
         int printedCount = 0;
         char* pData = new char[dataRelInfos[0].recordSize + dataRelInfos[1].recordSize];
         for (unsigned i = 0; i < res[0].size(); i++) {
-            memcpy(pData, res[0][i], dataRelInfos[0].recordSize);
             for (unsigned j = 0; j < res[1].size(); j++) {
                 bool matched = true;
                 for (int k = 0; k < nConditions; k++) {
@@ -646,7 +653,7 @@ RC QL_Manager::Select(int nSelAttrs, const RelAttr selAttrs[],
                                     int lvalue;
                                     memcpy(&lvalue, res[0][i]+linfo.offset, linfo.attrLength);
                                     int rvalue;
-                                    memcpy(&rvalue, res[1][i]+rinfo.offset, linfo.attrLength);
+                                    memcpy(&rvalue, res[1][j]+rinfo.offset, rinfo.attrLength);
                                     matched = matchValue(conditions[k].op, lvalue, rvalue);
                                     break;
                                 }
@@ -654,7 +661,7 @@ RC QL_Manager::Select(int nSelAttrs, const RelAttr selAttrs[],
                                     float lvalue;
                                     memcpy(&lvalue, res[0][i]+linfo.offset, linfo.attrLength);
                                     float rvalue;
-                                    memcpy(&rvalue, res[1][i]+rinfo.offset, rinfo.attrLength);
+                                    memcpy(&rvalue, res[1][j]+rinfo.offset, rinfo.attrLength);
                                     matched = matchValue(conditions[k].op, lvalue, rvalue);
                                     break;
                                 }
@@ -662,7 +669,7 @@ RC QL_Manager::Select(int nSelAttrs, const RelAttr selAttrs[],
                                     string lvalue;
                                     memcpy(&lvalue, res[0][i]+linfo.offset, linfo.attrLength);
                                     string rvalue;
-                                    memcpy(&rvalue, res[1][i]+rinfo.offset, rinfo.attrLength);
+                                    memcpy(&rvalue, res[1][j]+rinfo.offset, rinfo.attrLength);
                                     matched = matchValue(conditions[k].op, lvalue, rvalue);
                                     break;
                                 }
@@ -673,8 +680,9 @@ RC QL_Manager::Select(int nSelAttrs, const RelAttr selAttrs[],
                         }
                     }
                 }
-                memcpy(pData + dataRelInfos[0].recordSize, res[1][j], dataRelInfos[1].recordSize);
                 if (matched) {
+                    memcpy(pData, res[0][i], dataRelInfos[0].recordSize);
+                    memcpy(pData + dataRelInfos[0].recordSize, res[1][j], dataRelInfos[1].recordSize);
                     if (printedCount < 10) {
                         p.Print(cout, pData);
                     } else {
@@ -1030,8 +1038,6 @@ RC QL_Manager::Update(const char *relName,
         }
     }
 
-    RM_FileHandle rm_fhdl;
-    rm_mgr->OpenFile(relName, rm_fhdl);
     vector<RM_Record> records;
     if (!optimize) {
         RM_GetRecords(relName, nConditions, conditions, records);
@@ -1052,8 +1058,10 @@ RC QL_Manager::Update(const char *relName,
 
     DataAttrInfo last = dataAttrInfos.back();
     int numBytes = (dataRelInfo.attrCount + 7) / 8;
+    RM_FileHandle rm_fhdl;
 
     for (int i = 0; i < records.size(); i++) {
+        rm_mgr->OpenFile(relName, rm_fhdl);
         char* recData = NULL;
         records[i].GetData(recData);
 
@@ -1109,7 +1117,7 @@ RC QL_Manager::Update(const char *relName,
             }
         }
         rm_fhdl.UpdateRec(records[i]);
-
+        rm_mgr->CloseFile(rm_fhdl);
         // update to ix
         IX_IndexHandle ix_ihdl;
         char* pData = NULL;
@@ -1133,7 +1141,6 @@ RC QL_Manager::Update(const char *relName,
         delete[] bakData;
 
     }
-    rm_mgr->CloseFile(rm_fhdl);
 
     return OK_RC;
 }

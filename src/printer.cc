@@ -15,6 +15,16 @@
 
 using namespace std;
 
+#define CHECK_NOZERO(x)            \
+    {                              \
+        if ((rc = x)) {            \
+            printf("printer warning; %d\n", rc);    \
+            if (rc < 0) {          \
+                return; \
+            }                      \
+        }                          \
+    }
+
 //
 // void Spaces(int maxLength, int printedSoFar)
 //
@@ -227,9 +237,13 @@ void Printer::Print(ostream &c, const void * const data[])
 //
 void Printer::Print(ostream &c, const char * const data)
 {
+    RC rc;
     char str[MAXPRINTSTRING], strSpace[50];
     int a;
     float b;
+    int totalOffset = 0;
+    // Increment the number of tuples printed
+    iCount++;
 
     for (auto oneAttributes : allAttributes) {
         // init bitmap
@@ -248,9 +262,6 @@ void Printer::Print(ostream &c, const char * const data)
         if (data == NULL)
             return;
 
-        // Increment the number of tuples printed
-        iCount++;
-
         for (auto attr : oneAttributes) {
             for (unsigned i = 0; i<attrCount; i++) {
                 if (strcmp(attr.relName, attributes[i].relName) == 0 && strcmp(attr.attrName, attributes[i].attrName) == 0) {
@@ -258,7 +269,7 @@ void Printer::Print(ostream &c, const char * const data)
                     DataAttrInfo tmp;
                     bool tmpf;
                     RID rid;
-                    sm_mgr->FindAttr(attributes[i].relName, attributes[i].attrName, tmp, rid, tmpf, &pos);
+                    CHECK_NOZERO(sm_mgr->FindAttr(attributes[i].relName, attributes[i].attrName, tmp, rid, tmpf, &pos));
                     bool isNull = false;
                     bitmap.isFree(pos, isNull);
                     if (isNull) {
@@ -274,13 +285,13 @@ void Printer::Print(ostream &c, const char * const data)
                             memset(str,0,MAXPRINTSTRING);
 
                             if (attributes[i].attrLength>MAXPRINTSTRING) {
-                                strncpy(str, data+attributes[i].offset, MAXPRINTSTRING-1);
+                                strncpy(str, data+totalOffset+attributes[i].offset, MAXPRINTSTRING-1);
                                 str[MAXPRINTSTRING-3] ='.';
                                 str[MAXPRINTSTRING-2] ='.';
                                 c << str;
                                 Spaces(MAXPRINTSTRING, strlen(str));
                             } else {
-                                strncpy(str, data+attributes[i].offset, attributes[i].attrLength);
+                                strncpy(str, data+totalOffset+attributes[i].offset, attributes[i].attrLength);
                                 c << str;
                                 if (attributes[i].attrLength < (int) strlen(psHeader[i]))
                                     Spaces(strlen(psHeader[i]), strlen(str));
@@ -289,7 +300,7 @@ void Printer::Print(ostream &c, const char * const data)
                             }
                         }
                         if (attributes[i].attrType == INT) {
-                            memcpy (&a, (data+attributes[i].offset), sizeof(int));
+                            memcpy (&a, (data+totalOffset+attributes[i].offset), sizeof(int));
                             sprintf(strSpace, "%d",a);
                             c << a;
                             if (strlen(psHeader[i]) < 12)
@@ -298,7 +309,7 @@ void Printer::Print(ostream &c, const char * const data)
                                 Spaces(strlen(psHeader[i]), strlen(strSpace));
                         }
                         if (attributes[i].attrType == FLOAT) {
-                            memcpy (&b, (data+attributes[i].offset), sizeof(float));
+                            memcpy (&b, (data+totalOffset+attributes[i].offset), sizeof(float));
                             sprintf(strSpace, "%f",b);
                             c << strSpace;
                             if (strlen(psHeader[i]) < 12)
@@ -310,6 +321,9 @@ void Printer::Print(ostream &c, const char * const data)
                 }
             }
         }
+
+        totalOffset += recLength;
+
         delete[] tmp;
     }
 

@@ -10,7 +10,7 @@ protected:
     virtual void SetUp() {
         start_time=clock();
         nAttrs = 3;
-        nRecords = 10000;
+        nRecords = 5;
         AttrInfo attrs[nAttrs];
         for (int i = 0; i < nAttrs; i++) {
             attrs[i].attrLength = 4;
@@ -179,10 +179,14 @@ TEST_F(QL_ManagerTest, SelectJoin) {
     Condition conditions[1];
     conditions[0].lhsAttr.relName = "testRel3";
     conditions[0].lhsAttr.attrName = "attr0";
-    conditions[0].op = LE_OP;
+    conditions[0].op = EQ_OP;
     conditions[0].rhsAttr.relName = "testRel2";
     conditions[0].rhsAttr.attrName = "attr1";
     conditions[0].bRhsIsAttr = true;
+    int a = 5;
+    conditions[0].rhsValue.data = &a;
+    conditions[0].rhsValue.type = INT;
+    conditions[0].bRhsIsAttr = false;
 
     ASSERT_EQ(qmm.Select(nSelAttrs, selAttrs, nRelations, relations, nConditions, conditions), OK_RC);
 }
@@ -278,10 +282,10 @@ TEST_F(QL_ManagerTest, UpdateBatch) {
     int nConditions = 1;
     Condition conditions[1];
     conditions[0].lhsAttr.attrName = "attr0";
-    conditions[0].op = EQ_OP;
+    conditions[0].op = LE_OP;
     conditions[0].rhsAttr.attrName = "attr2";
     conditions[0].bRhsIsAttr = true;
-    ASSERT_EQ(qmm.Update(relName, nColumns, columnNames, rhsValue, nConditions, conditions), OK_RC);
+    ASSERT_EQ(qmm.Update(relName, nColumns, columnNames, rhsValue, nConditions, conditions), QL_UPDATE_CONFLICT);
     int nSelAttrs = 1;
     RelAttr selAttrs[1];
     selAttrs[0].attrName = "*";
