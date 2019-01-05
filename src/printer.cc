@@ -256,7 +256,7 @@ void Printer::Print(ostream &c, const char * const data)
         recLength += numBytes;
 
         char* tmp = new char[recLength];
-        memcpy(tmp, data, recLength);
+        memcpy(tmp, data + totalOffset, recLength);
         RM_BitMap bitmap(numBytes, tmp + last.offset + last.attrLength);
 
         if (data == NULL)
