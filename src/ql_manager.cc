@@ -107,8 +107,9 @@ bool QL_Manager::matchValue(CompOp op, T lValue, T rValue) {
 }
 
 bool matched(AttrType t1, AttrType& t2, char* data) {
-    if (t1 == NULLTYPE || t2 == NULLTYPE)
+    if (t1 == NULLTYPE || t2 == NULLTYPE) {
         return true;
+    }
     switch(t1) {
         case INT: {
             return t2 == INT;
@@ -575,7 +576,7 @@ RC QL_Manager::Select(int nSelAttrs, const RelAttr selAttrs[],
                 string tmp(conditions[i].lhsAttr.relName);
                 lrname = tmp;
             }
-            if (!matched(attr2info[lrname+"."+laname].attrType ,conditions[i].rhsValue.type, (char*)conditions[i].rhsValue.data)) {
+            if (!conditions[i].isNotNULL && !conditions[i].isNULL && !matched(attr2info[lrname+"."+laname].attrType ,conditions[i].rhsValue.type, (char*)conditions[i].rhsValue.data)) {
                 return QL_DONT_MATCH;
             }
         }
@@ -932,7 +933,7 @@ RC QL_Manager::Delete(const char *relName,
     for (int i = 0; i < nConditions; i++) {
         if (!conditions[i].bRhsIsAttr) {
             string laname(conditions[i].lhsAttr.attrName);
-            if (!matched(attr2info[laname].attrType ,conditions[i].rhsValue.type, (char*)conditions[i].rhsValue.data)) {
+            if (!conditions[i].isNULL && !conditions[i].isNotNULL && !matched(attr2info[laname].attrType ,conditions[i].rhsValue.type, (char*)conditions[i].rhsValue.data)) {
                 return QL_DONT_MATCH;
             }
         }

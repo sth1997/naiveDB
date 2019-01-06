@@ -329,7 +329,9 @@ TEST_F(QL_ManagerTest, SelectNULL) {
     }
     ptrs[0] = nRecords + 1;
     values[1].type = NULLTYPE;
-    ASSERT_EQ(qmm.Insert("testRel3", nAttrs, values), OK_RC);
+    int rc = qmm.Insert("testRel3", nAttrs, values);
+    cout << "insert null: " << rc << endl;
+    ASSERT_EQ(rc, OK_RC);
 
     int nSelAttrs = 1;
     RelAttr selAttrs[1];
