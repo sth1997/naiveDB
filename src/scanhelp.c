@@ -237,6 +237,22 @@ static char *mk_string(char *s, int len)
    }
 
    /* copy the string */
-   strncpy(copy, s, len + 1);
+   //strncpy(copy, s, len + 1);
+   int zhuanyi = 0;
+   int newLen = 0;
+   for (int i = 0; i < len; ++i)
+      if (s[i] != '\\')
+      {
+         copy[newLen++] = s[i];
+         zhuanyi = 0;
+      }
+      else  if (zhuanyi != 0) //
+      {
+         copy[newLen++] = s[i];
+         zhuanyi = 0;
+      }
+      else
+         zhuanyi = 1;
+      copy[newLen] = '\0';
    return copy;
 }

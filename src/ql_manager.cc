@@ -106,6 +106,35 @@ bool QL_Manager::matchValue(CompOp op, T lValue, T rValue) {
     return false;
 }
 
+bool matched(AttrType t1, AttrType& t2, char* data) {
+    if (t1 == NULLTYPE || t2 == NULLTYPE)
+        return true;
+    switch(t1) {
+        case INT: {
+            return t2 == INT;
+            break;
+        }
+        case FLOAT: {
+            if (t2 == STRING) {
+                return false;
+            }
+            if (t2 == INT) {
+                float tmp = *(int*) data;
+                t2 = FLOAT;
+                memcpy(data, &tmp, 4);
+            }
+            return true;
+            break;
+        }
+        case STRING: {
+            return t2 == STRING;
+        }
+        default: {
+            cout << "aaa" << endl;
+        }
+    }
+    return false;
+}
 
 RC QL_Manager::RM_GetRecords(const char* const relation, int nConditions, const Condition conditions[], vector<RM_Record>& rm_records) {
 
@@ -218,16 +247,20 @@ RC QL_Manager::RM_GetRecords(const char* const relation, int nConditions, const 
                             break;
                         }
                         case STRING: {
-                            string lvalue;
-                            memcpy(&lvalue, pData+linfo.offset, linfo.attrLength);
+                            string lvalue(pData + linfo.offset);
+                            //memcpy(&lvalue, pData+linfo.offset, linfo.attrLength);
                             string rvalue;
                             if (conditions[i].bRhsIsAttr) {
                                 string rrname(relation);
                                 string raname(conditions[i].rhsAttr.attrName);
                                 DataAttrInfo rinfo = attr2info[rrname+"."+raname];
-                                memcpy(&rvalue, pData+rinfo.offset, rinfo.attrLength);
+                                //memcpy(&rvalue, pData+rinfo.offset, rinfo.attrLength);
+                                string tmp(pData+rinfo.offset);
+                                rvalue = tmp;
                             } else {
-                                memcpy(&rvalue, conditions[i].rhsValue.data, linfo.attrLength);
+                                string tmp((char*)conditions[i].rhsValue.data);
+                                rvalue = tmp;
+                                //memcpy(&rvalue, conditions[i].rhsValue.data, linfo.attrLength);
                             }
                             matched = matchValue(conditions[i].op, lvalue, rvalue);
                             break;
@@ -372,16 +405,20 @@ RC QL_Manager::IX_GetRecords(const char* const relation, int nConditions, const 
                             break;
                         }
                         case STRING: {
-                            string lvalue;
-                            memcpy(&lvalue, pData+linfo.offset, linfo.attrLength);
+                            string lvalue(pData+linfo.offset);
+                            //memcpy(&lvalue, pData+linfo.offset, linfo.attrLength);
                             string rvalue;
                             if (conditions[i].bRhsIsAttr) {
                                 string rrname(relation);
                                 string raname(conditions[i].rhsAttr.attrName);
                                 DataAttrInfo rinfo = attr2info[rrname+"."+raname];
-                                memcpy(&rvalue, pData+rinfo.offset, rinfo.attrLength);
+                                //memcpy(&rvalue, pData+rinfo.offset, rinfo.attrLength);
+                                string tmp(pData+rinfo.offset);
+                                rvalue = tmp;
                             } else {
-                                memcpy(&rvalue, conditions[i].rhsValue.data, linfo.attrLength);
+                                //memcpy(&rvalue, conditions[i].rhsValue.data, linfo.attrLength);
+                                string tmp((char*)conditions[i].rhsValue.data);
+                                rvalue = tmp;
                             }
                             matched = matchValue(conditions[i].op, lvalue, rvalue);
                             break;
@@ -420,7 +457,7 @@ RC QL_Manager::IX_GetRecords(const char* const relation, int nConditions, const 
 // 4. check conditions
 RC QL_Manager::Select(int nSelAttrs, const RelAttr selAttrs[],
                       int nRelations, const char * const relations[],
-                      int nConditions, const Condition conditions[])
+                      int nConditions, Condition conditions[])
 {
 
     if (printPara) {
@@ -527,6 +564,21 @@ RC QL_Manager::Select(int nSelAttrs, const RelAttr selAttrs[],
     vector<DataAttrInfo> changedSelAttrInfo;
     for (int i = 0; i < nSelAttrs; i++) {
         changedSelAttrInfo.push_back(attr2info[string(changedSelAttrs[i].relName)+"."+string(changedSelAttrs[i].attrName)]);
+    }
+    for (int i = 0; i < nConditions; i++) {
+        if (!conditions[i].bRhsIsAttr) {
+            string laname(conditions[i].lhsAttr.attrName);
+            string lrname;
+            if (conditions[i].lhsAttr.relName == NULL) {
+                lrname = *(attr2rels[laname].begin());
+            } else {
+                string tmp(conditions[i].lhsAttr.relName);
+                lrname = tmp;
+            }
+            if (!matched(attr2info[lrname+"."+laname].attrType ,conditions[i].rhsValue.type, (char*)conditions[i].rhsValue.data)) {
+                return QL_DONT_MATCH;
+            }
+        }
     }
 
     // 4. check conditions
@@ -666,10 +718,10 @@ RC QL_Manager::Select(int nSelAttrs, const RelAttr selAttrs[],
                                     break;
                                 }
                                 case STRING: {
-                                    string lvalue;
-                                    memcpy(&lvalue, res[0][i]+linfo.offset, linfo.attrLength);
-                                    string rvalue;
-                                    memcpy(&rvalue, res[1][j]+rinfo.offset, rinfo.attrLength);
+                                    string lvalue(res[0][i]+linfo.offset);
+                                    //memcpy(&lvalue, res[0][i]+linfo.offset, linfo.attrLength);
+                                    string rvalue(res[1][j]+rinfo.offset);
+                                    //memcpy(&rvalue, res[1][j]+rinfo.offset, rinfo.attrLength);
                                     matched = matchValue(conditions[k].op, lvalue, rvalue);
                                     break;
                                 }
@@ -707,11 +759,13 @@ RC QL_Manager::Select(int nSelAttrs, const RelAttr selAttrs[],
     return OK_RC;
 }
 
+
+
 //
 // Insert the values into relName
 //
 RC QL_Manager::Insert(const char *relName,
-                      int nValues, const Value values[])
+                      int nValues, Value values[])
 {
     RC rc;
 
@@ -740,6 +794,11 @@ RC QL_Manager::Insert(const char *relName,
     CHECK_NOZERO(sm_mgr->FindAllAttrs(relName, dataAttrInfos));
     if (dataAttrInfos.size() != nValues) {
         return QL_INCONSISTENT_VALUE_AMOUNT;
+    }
+    for (int i = 0; i < dataAttrInfos.size(); i++) {
+        if (!matched(dataAttrInfos[i].attrType, values[i].type, (char*)values[i].data)) {
+            return QL_DONT_MATCH;
+        }
     }
     DataAttrInfo last = dataAttrInfos[dataAttrInfos.size() - 1];
 
@@ -842,7 +901,7 @@ RC QL_Manager::Insert(const char *relName,
 // Delete from the relName all tuples that satisfy conditions
 //
 RC QL_Manager::Delete(const char *relName,
-                      int nConditions, const Condition conditions[])
+                      int nConditions, Condition conditions[])
 {
     if (printPara) {
         int i;
@@ -864,11 +923,20 @@ RC QL_Manager::Delete(const char *relName,
     CHECK_NOZERO(sm_mgr->FindAllAttrs(relName, dataAttrInfos));
     if (rc)
         return rc;
+
     for (auto attr : dataAttrInfos) {
         attr2info[string(attr.attrName)] = attr;
     }
     DataAttrInfo last = dataAttrInfos.back();
     int numBytes = (dataAttrInfos.size() + 7) / 8;
+    for (int i = 0; i < nConditions; i++) {
+        if (!conditions[i].bRhsIsAttr) {
+            string laname(conditions[i].lhsAttr.attrName);
+            if (!matched(attr2info[laname].attrType ,conditions[i].rhsValue.type, (char*)conditions[i].rhsValue.data)) {
+                return QL_DONT_MATCH;
+            }
+        }
+    }
 
     // check each condition
     for (int i = 0; i < nConditions; i++) {
@@ -959,7 +1027,7 @@ RC QL_Manager::Update(const char *relName,
                       int nColumns,
                       const char* const columnNames[],
                       const Value values[],
-                      int nConditions, const Condition conditions[])
+                      int nConditions, Condition conditions[])
 {
 
     if (printPara) {
@@ -994,6 +1062,14 @@ RC QL_Manager::Update(const char *relName,
         attr2info[string(attr.attrName)] = attr;
     }
 
+    for (int i = 0; i < nConditions; i++) {
+        if (!conditions[i].bRhsIsAttr) {
+            string laname(conditions[i].lhsAttr.attrName);
+            if (!matched(attr2info[laname].attrType ,conditions[i].rhsValue.type, (char*)conditions[i].rhsValue.data)) {
+                return QL_DONT_MATCH;
+            }
+        }
+    }
     // check each condition
     for (int i = 0; i < nConditions; i++) {
         string laname = string(conditions[i].lhsAttr.attrName);

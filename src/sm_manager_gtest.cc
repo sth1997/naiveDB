@@ -66,9 +66,7 @@ TEST_F(SM_ManagerTest, Test) {
     attrs[1].attrName = "attr1";
     attrs[0].attrType = INT;
     attrs[1].attrType = STRING;
-    attrs[0].attrLength = 3;
     attrs[1].attrLength = 10;
-    ASSERT_EQ(smm.CreateTable("testRel", 2, attrs), SM_BADTABLEPARA);
     attrs[0].attrLength = 4;
     bool found = false;
     ASSERT_EQ(smm.CheckRel("testRel", found), OK_RC);

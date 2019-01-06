@@ -30,15 +30,15 @@ public:
         int   nRelations,                // # relations in from clause
         const char * const relations[],  // relations in from clause
         int   nConditions,               // # conditions in where clause
-        const Condition conditions[]);   // conditions in where clause
+        Condition conditions[]);   // conditions in where clause
 
     RC Insert  (const char *relName,     // relation to insert into
         int   nValues,                   // # values
-        const Value values[]);           // values to insert
+        Value values[]);           // values to insert
 
     RC Delete  (const char *relName,     // relation to delete from
         int   nConditions,               // # conditions in where clause
-        const Condition conditions[]);   // conditions in where clause
+        Condition conditions[]);   // conditions in where clause
 
     RC Update  (const char *relName,     // relation to update
         const RelAttr &updAttr,          // attribute to update
@@ -53,7 +53,7 @@ public:
         const char* const columnNames[],       // columnNames in set clause
         const Value values[],            // values in set clause
         int   nConditions,               // # conditions in where clause
-        const Condition conditions[]);   // conditions in where clause
+        Condition conditions[]);   // conditions in where clause
     
     RC SetPrintPara(bool p) {printPara = p; }
 
@@ -93,6 +93,7 @@ void QL_PrintError(RC rc);
 #define QL_INCONSISTENT_VALUE_AMOUNT (START_QL_WARN + 12)
 #define QL_INSERT_KEY_DUPLICATED    (START_QL_WARN + 13)
 #define QL_UPDATE_CONFLICT          (START_QL_WARN + 14)
+#define QL_DONT_MATCH               (START_QL_WARN + 15)
 #define QL_LASTWARN                QL_UPDATE_CONFLICT
 
 // Errors
