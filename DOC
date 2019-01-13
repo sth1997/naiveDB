@@ -8,16 +8,18 @@
 4. 查询解析模块：实现基本的数据操作语言（DML），对数据库里的数据进行增删改查等基本操作。
     
 系统设计如下：
-![avatar](./naiveDB.jpg)
+![avatar](/home/sth/naiveDB.jpg)
 ## 模块说明
 ### RM
 RM提供用于管理文件中无序记录的类和方法，组件中所有类名和方法名都以RM作为前缀。RM组件存储在由PF组件提供的页式文件系统中，每个文件的第一页存储文件的可用空间信息等元数据，之后的每一页开头会记录一个bitmap，表示这一页中所有的slot，哪些已经存储了记录，哪些还未存储记录。记录为定长设计，这样我们能够通过RID确定一个记录。
 由于需要实现NULL，所以对每一条记录，我们还会在每条记录的最后存储num bits来表示该记录对应的每个属性是否为null，其中num为一条记录的属性个数。
 RM_Manager类负责文件的创建/删除，打开/关闭。
+RM_FileHandle类用于操作打开的RM文件中的记录。
 RM_FileScan类负责对文件中的记录进行扫描，可以基于指定的条件。
 ### IX
 IX提供管理无序记录的索引的类和方法，组件中所有类名和方法名都以IX作为前缀。索引最终用于加速基于条件的选择，更新和删除操作。和记录本身一样，索引也存在由PF组件提供的页式文件系统中。我们使用B+树实现索引模块，以加快查找速度。
 IX_Manager类处理索引的创建/插入/删除，打开/关闭。
+IX_IndexHandle类用于插入、删除和查找索引记录。此类使用B+树实现。
 IX_IndexScan类负责对索引中的条目进行扫描，可以基于指定的条件。
 ###SM
 SM模块实现了基本的数据定义语言（DDL），对数据库和数据表进行管理。
@@ -52,6 +54,36 @@ class RM_Manager {
 
 `RC CloseFile (RM_FileHandle &fileHandle)`
 关闭fileHandle这个句柄
+
+``` C++
+class RM_FileHandle {
+  public:
+       RM_FileHandle  ();                                  // Constructor
+       ~RM_FileHandle ();                                  // Destructor
+    RC GetRec         (const RID &rid, RM_Record &rec) const;
+                                                           // Get a record
+    RC InsertRec      (const char *pData, RID &rid);       // Insert a new record,
+                                                           //   return record id
+    RC DeleteRec      (const RID &rid);                    // Delete a record
+    RC UpdateRec      (const RM_Record &rec);              // Update a record
+    RC ForcePages     (PageNum pageNum = ALL_PAGES) const; // Write dirty page(s)
+                                                           //   to disk
+};
+```
+`RC GetRec         (const RID &rid, RM_Record &rec) const;`
+根据指定的rid（包括页号和slot编号），返回对应位置存储的数据RM_Record。
+
+`RC InsertRec      (const char *pData, RID &rid);`
+将pData指向的数据作为新记录插入文件中。如果成功，返回参数&rid应该指向新插入记录的RID（包括页号和slot编号）。
+
+`RC DeleteRec      (const RID &rid);`
+文件中删除标识符为rid的记录。
+
+`RC UpdateRec      (const RM_Record &rec);`
+用rec的当前内容替换文件中记录的现有内容。RM_Record中包含rid，即可以通过rec得知需要替换的记录位置。
+
+`RC ForcePages     (PageNum pageNum = ALL_PAGES) const;`
+调用相应的方法PF_FileHandle::ForcePages，以便将文件的一个或所有脏页的内容从缓冲池复制到磁盘。
 
 ```C++
 class RM_FileScan {
@@ -108,6 +140,26 @@ class IX_Manager {
 
 `RC CloseIndex (IX_IndexHandle &indexHandle)`
 关闭indexHandle这个索引句柄
+
+```C++
+class IX_IndexHandle {
+  public:
+       IX_IndexHandle  ();                             // Constructor
+       ~IX_IndexHandle ();                             // Destructor
+    RC InsertEntry     (void *pData, const RID &rid);  // Insert new index entry
+    RC DeleteEntry     (void *pData, const RID &rid);  // Delete index entry
+    RC ForcePages      ();                             // Copy index to disk
+};
+```
+
+`RC InsertEntry     (void *pData, const RID &rid);`
+在与IX_IndexHandle相关联的索引中插入一个新条目。参数pData指向要插入到索引中的属性值，参数rid表示pData相对应的记录位置（包含页号和slot编号）。
+
+`RC DeleteEntry     (void *pData, const RID &rid); `
+从与IX_IndexHandle相关联的索引中删除( *pData，rid )对的条目。
+
+`RC ForcePages      ();`
+将所有与IX_IndexHandle相关联的页面复制到磁盘上。通过调用索引文件的PF _ FileHandle : : ForcePages，索引页面内容被强制放到磁盘上。
 
 ```C++
 class IX_IndexScan {
@@ -258,14 +310,14 @@ RC Update (const char *relName, const RelAttr &updAttr, const int bIsValue, cons
 ##小组分工
 师天麾负责：
 
--  RM_Manager
-- IX_Manager
+-  RM_FileHandle & RM_FileHeader & RM_PageHeader & RM_BitMap & RM_Record
+- IX_IndexHandle & IX_FileHeader & BTreeNode
 - SM_Manager
 
 罗华一负责：
 
-- RM_FileScan
-- IX_IndexScan
+- RM_Manager & RM_FileScan
+- IX_Manager & IX_IndexScan
 - QL_Manager
 
 ##参考文献
